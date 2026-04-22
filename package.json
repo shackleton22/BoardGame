@@ -6,6 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
+    "replit:dev": "npm install && next dev --hostname 0.0.0.0 --port 3000",
+    "replit:start": "npm install && next build && next start --hostname 0.0.0.0 --port 3000",
     "lint": "eslint . --max-warnings 0",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",

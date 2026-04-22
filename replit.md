@@ -1,33 +1,30 @@
-# Replit Agent Skills Library
+# GameGift Studio On Replit
 
-## Overview
-This is the Replit Agent Skills Library — a repository of modular skill definitions used by the Replit Agent platform. Skills are structured markdown files that define agent capabilities across a wide range of tasks.
+This repository is a Next.js storefront and ops dashboard for GameGift Studio.
 
-## Project Structure
+Replit should run the app through the `.replit` workflow using:
 
-- `.local/skills/` — Core agent skills (37 skills including workflows, database, deployment, canvas, etc.)
-- `.local/secondary_skills/` — Domain-specific skills (meal planner, stock analyzer, travel assistant, etc.)
-- `.local/state/` — Persistent agent state storage
-- `.agents/` — Agent instance metadata
-- `server.py` — Simple Python HTTP server that displays the skills library at port 5000
+- `npm run replit:dev` for the workspace run button
+- `npm run replit:start` for autoscale deployment
 
-## Running the Application
+## If Replit still shows the old skills library
 
-The application is a static skills browser served by a Python HTTP server.
+That means the Repl is still using an older commit or older `.replit` config.
 
-**Start command:** `python server.py`  
-**Port:** 5000
+Fix it by:
 
-## Architecture
+1. pulling the latest changes from `main`
+2. restarting the Repl
+3. rerunning the workspace after dependencies install
 
-- **Frontend:** Plain HTML/CSS served dynamically by Python's built-in HTTP server
-- **Backend:** Python `http.server` module (no external dependencies)
-- **Data:** Skills are read directly from the `.local/` directory at runtime
+## Expected local port
 
-## Skills Categories
+- `3000`
 
-### Core Skills
-Development tools, integrations, design, deployment, database management, and platform-specific capabilities.
+## Required environment variables before the app is truly usable
 
-### Domain Skills  
-Specialized task skills like resume building, meal planning, stock analysis, SEO auditing, and more.
+- `DATABASE_URL`
+- `NEXT_PUBLIC_APP_URL`
+- `ADMIN_PASSWORD`
+- Stripe keys
+- optional OpenAI, Turnstile, Resend, PostHog, Sentry, and The Game Crafter keys

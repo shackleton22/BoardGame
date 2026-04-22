@@ -1,4 +1,4 @@
-modules = ["python-3.11"]
+modules = ["nodejs-20"]
 [agent]
 expertMode = true
 
@@ -23,16 +23,16 @@ author = "agent"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "python server.py"
-waitForPort = 5000
+args = "npm run replit:dev"
+waitForPort = 3000
 
 [workflows.workflow.metadata]
 outputType = "webview"
 
 [[ports]]
-localPort = 5000
+localPort = 3000
 externalPort = 80
 
 [deployment]
 deploymentTarget = "autoscale"
-run = ["python", "server.py"]
+run = ["npm", "run", "replit:start"]
