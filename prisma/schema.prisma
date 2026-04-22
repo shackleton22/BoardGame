@@ -1,0 +1,342 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum ProjectStatus {
+  draft
+  generating
+  preview_ready
+  quote_ready
+  paid
+  asset_ready
+  fulfilled
+  failed
+}
+
+enum ProductTier {
+  digital_print_kit
+  printed_board_cards
+  premium_gift_box
+}
+
+enum ProjectItemCategory {
+  place
+  hobby
+  memory
+  person_pet
+  achievement
+  inside_joke
+  travel
+  food
+  career
+  other
+}
+
+enum GeneratedAssetStatus {
+  pending
+  ready
+  failed
+}
+
+enum OrderStatus {
+  pending
+  paid
+  failed
+  refunded
+  cancelled
+}
+
+enum FulfillmentProvider {
+  mock
+  printify
+  boardgamesmaker
+  the_game_crafter
+}
+
+enum FulfillmentStatus {
+  pending
+  submitted
+  manual_review
+  submitted_mock
+  processing
+  shipped
+  cancelled
+  failed
+}
+
+enum ShippingQuoteStatus {
+  pending
+  active
+  selected
+  expired
+  used
+  failed
+}
+
+enum VendorOrderStatus {
+  draft
+  submitted
+  processing
+  manual_review
+  shipped
+  cancelled
+  failed
+}
+
+enum VendorShipmentStatus {
+  pending
+  in_transit
+  delivered
+  failed
+}
+
+model GameTemplate {
+  id               String              @id @default(cuid())
+  slug             String              @unique
+  name             String
+  description      String
+  shortDescription String
+  status           String              @default("active")
+  sortOrder        Int                 @default(0)
+  metadataJson     Json?
+  createdAt        DateTime            @default(now())
+  updatedAt        DateTime            @updatedAt
+  priceBooks       TemplatePriceBook[]
+  vendorSkuMaps    VendorSkuMap[]
+  projects         Project[]
+}
+
+model TemplatePriceBook {
+  id                   String       @id @default(cuid())
+  templateId           String
+  template             GameTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  productTier          ProductTier
+  amount               Int
+  currency             String       @default("usd")
+  active               Boolean      @default(true)
+  productionMinDays    Int?
+  productionMaxDays    Int?
+  shippingNote         String?
+  metadataJson         Json?
+  createdAt            DateTime     @default(now())
+  updatedAt            DateTime     @updatedAt
+
+  @@unique([templateId, productTier])
+  @@index([templateId, active])
+}
+
+model VendorSkuMap {
+  id             String              @id @default(cuid())
+  templateId     String
+  template       GameTemplate        @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  provider       FulfillmentProvider
+  productTier    ProductTier
+  componentKey   String
+  componentLabel String
+  sku            String
+  quantity       Int                 @default(1)
+  active         Boolean             @default(true)
+  metadataJson   Json?
+  createdAt      DateTime            @default(now())
+  updatedAt      DateTime            @updatedAt
+
+  @@unique([templateId, provider, productTier, componentKey])
+  @@index([templateId, provider, productTier, active])
+}
+
+model Project {
+  id                       String            @id @default(cuid())
+  templateId               String
+  template                 GameTemplate      @relation(fields: [templateId], references: [id])
+  templateSlug             String
+  createdAt                DateTime          @default(now())
+  updatedAt                DateTime          @updatedAt
+  status                   ProjectStatus     @default(draft)
+  recipientName            String
+  buyerName                String
+  occasion                 String
+  tone                     String
+  relationship             String
+  visualStyle              String
+  colorMood                String
+  titleOverride            String?
+  subtitleOverride         String?
+  avoidNotes               String?
+  productTier              ProductTier
+  shippingJson             Json?
+  inputJson                Json
+  outputJson               Json?
+  previewRegenerationCount Int               @default(0)
+  errorMessage             String?
+  items                    ProjectItem[]
+  assets                   GeneratedAsset[]
+  orders                   Order[]
+  shippingQuotes           ShippingQuote[]
+  operationalEvents        OperationalEvent[]
+
+  @@index([templateSlug, status, createdAt])
+}
+
+model ProjectItem {
+  id        String              @id @default(cuid())
+  projectId String
+  project   Project             @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  name      String
+  category  ProjectItemCategory
+  note      String?
+  sortOrder Int
+
+  @@index([projectId, sortOrder])
+}
+
+model GeneratedAsset {
+  id           String               @id @default(cuid())
+  projectId    String
+  project      Project              @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  type         String
+  label        String
+  fileName     String
+  url          String?
+  storageKey   String?
+  mimeType     String?
+  width        Int?
+  height       Int?
+  status       GeneratedAssetStatus @default(pending)
+  metadataJson Json?
+  createdAt    DateTime             @default(now())
+
+  @@unique([projectId, type])
+  @@index([projectId, type])
+}
+
+model ShippingQuote {
+  id                       String              @id @default(cuid())
+  projectId                String
+  project                  Project             @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  provider                 FulfillmentProvider
+  status                   ShippingQuoteStatus @default(active)
+  providerCartId           String?
+  shippingMethod           String
+  shippingLabel            String
+  amount                   Int
+  currency                 String              @default("usd")
+  handlingAmount           Int                 @default(0)
+  insuranceAmount          Int                 @default(0)
+  taxAmount                Int                 @default(0)
+  weightOz                 Int?
+  parcelCount              Int?
+  etaMinBusinessDays       Int?
+  etaMaxBusinessDays       Int?
+  productionMinBusinessDays Int?
+  productionMaxBusinessDays Int?
+  estimatedShipDate        DateTime?
+  expiresAt                DateTime?
+  selectedAt               DateTime?
+  payloadJson              Json
+  createdAt                DateTime            @default(now())
+  updatedAt                DateTime            @updatedAt
+  orders                   Order[]
+
+  @@index([projectId, status, createdAt])
+}
+
+model Order {
+  id                    String           @id @default(cuid())
+  publicOrderNumber     String           @unique
+  projectId             String
+  project               Project          @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  shippingQuoteId       String?
+  shippingQuote         ShippingQuote?   @relation(fields: [shippingQuoteId], references: [id], onDelete: SetNull)
+  stripeSessionId       String?          @unique
+  stripePaymentIntentId String?
+  email                 String?
+  amount                Int
+  currency              String           @default("usd")
+  productTier           ProductTier
+  templateSlug          String
+  status                OrderStatus      @default(pending)
+  metadataJson          Json?
+  createdAt             DateTime         @default(now())
+  updatedAt             DateTime         @updatedAt
+  fulfillmentJobs       FulfillmentJob[]
+  vendorOrder           VendorOrder?
+  operationalEvents     OperationalEvent[]
+
+  @@index([projectId, status])
+  @@index([publicOrderNumber, email])
+}
+
+model FulfillmentJob {
+  id              String              @id @default(cuid())
+  orderId         String
+  order           Order               @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  provider        FulfillmentProvider
+  providerOrderId String?
+  status          FulfillmentStatus   @default(pending)
+  payloadJson     Json
+  responseJson    Json?
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+
+  @@index([orderId, provider, status])
+}
+
+model VendorOrder {
+  id                  String            @id @default(cuid())
+  orderId             String            @unique
+  order               Order             @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  provider            FulfillmentProvider
+  status              VendorOrderStatus @default(draft)
+  providerCartId      String?
+  providerReceiptId   String?
+  providerSessionId   String?
+  providerOrderNumber String?
+  payloadJson         Json
+  responseJson        Json?
+  submittedAt         DateTime?
+  syncedAt            DateTime?
+  createdAt           DateTime          @default(now())
+  updatedAt           DateTime          @updatedAt
+  shipments           VendorShipment[]
+
+  @@index([provider, status])
+}
+
+model VendorShipment {
+  id                String               @id @default(cuid())
+  vendorOrderId     String
+  vendorOrder       VendorOrder          @relation(fields: [vendorOrderId], references: [id], onDelete: Cascade)
+  providerShipmentId String?
+  status            VendorShipmentStatus @default(pending)
+  trackingNumber    String?
+  trackingUrl       String?
+  shippedAt         DateTime?
+  deliveredAt       DateTime?
+  payloadJson       Json?
+  responseJson      Json?
+  createdAt         DateTime             @default(now())
+  updatedAt         DateTime             @updatedAt
+
+  @@index([vendorOrderId, status])
+}
+
+model OperationalEvent {
+  id          String    @id @default(cuid())
+  projectId   String?
+  project     Project?  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  orderId     String?
+  order       Order?    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  scope       String
+  eventType   String
+  message     String
+  metadataJson Json?
+  createdAt   DateTime  @default(now())
+
+  @@index([projectId, createdAt])
+  @@index([orderId, createdAt])
+}

@@ -1,0 +1,48 @@
+{
+  "name": "gamegift-studio",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint . --max-warnings 0",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "db:generate": "prisma generate",
+    "db:migrate": "prisma migrate dev",
+    "db:push": "prisma db push",
+    "db:seed": "tsx prisma/seed.ts",
+    "postinstall": "prisma generate"
+  },
+  "prisma": {
+    "seed": "tsx prisma/seed.ts"
+  },
+  "dependencies": {
+    "@replit/object-storage": "latest",
+    "@prisma/client": "^6.6.0",
+    "clsx": "^2.1.1",
+    "next": "16.2.4",
+    "pdf-lib": "^1.17.1",
+    "react": "19.2.4",
+    "react-dom": "19.2.4",
+    "sharp": "^0.34.1",
+    "stripe": "^18.0.0",
+    "tailwind-merge": "^3.2.0",
+    "zod": "^3.24.2"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "eslint": "^9",
+    "eslint-config-next": "16.2.4",
+    "prisma": "^6.6.0",
+    "tailwindcss": "^4",
+    "tsx": "^4.19.3",
+    "typescript": "^5",
+    "vitest": "^3.1.3"
+  }
+}
