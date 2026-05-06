@@ -16,11 +16,12 @@ export function ExampleProofGallery({
       <div className="mx-auto max-w-3xl text-center">
         <span className="section-label">Example proofs</span>
         <h2 className="heading-display mt-4 text-4xl font-semibold text-stone-950 sm:text-5xl">
-          Exact board examples, not filler art
+          See what your proof can look like
         </h2>
         <p className="mx-auto mt-4 max-w-2xl text-sm leading-7 text-stone-600">
-          These are the actual sample board renders generated from example answers,
-          using the same deterministic renderer customers see in their proof.
+          These sample boards were generated from demo answers using the same proof
+          system customers see before checkout. Your version uses your names,
+          places, jokes, and stories.
         </p>
       </div>
 

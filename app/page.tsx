@@ -40,32 +40,32 @@ export default function HomePage() {
             <div>
               <div className="launch-note">
                 <span>{launchConfig.bannerCopy}</span>
-                <span>US-only boxed launch</span>
+                <span>Digital from $39 | Boxed from $79</span>
               </div>
 
               <h1 className="heading-display mt-7 max-w-4xl text-5xl leading-[0.92] font-semibold text-stone-950 sm:text-7xl">
-                A custom board game they&apos;ll actually want to play.
+                Turn their people, places, and inside jokes into a real board game.
               </h1>
               <p className="mt-5 max-w-2xl text-lg leading-8 text-stone-600">
-                Pick a familiar game style, answer a short guided quiz, approve the proof,
-                then download it or ship the boxed version with the board, cards, rules,
-                and pieces included.
+                Choose a game style, answer a playful quiz, and get an editable proof
+                with the board, cards, and rules already written for them. Download the
+                print kit or ship a boxed game with sourced pieces included.
               </p>
 
               <div className="mt-8 flex flex-wrap gap-3">
                 <Link href="/#formats" className="cta-pill">
-                  Create your game
+                  Choose a game style
                 </Link>
                 <Link href="/#examples" className="secondary-pill">
-                  See examples
+                  See sample boards
                 </Link>
               </div>
 
               <div className="mt-8 grid gap-3 sm:grid-cols-3">
                 {[
-                  ["2-minute quiz", "Multiple-choice first"],
-                  ["Editable proof", "Review before checkout"],
-                  ["Boxed or digital", "No DIY sourcing"],
+                  ["Fun quiz", "Mostly multiple choice"],
+                  ["Proof first", "Edit before checkout"],
+                  ["Ready to play", "Board, cards, rules, pieces"],
                 ].map(([title, body]) => (
                   <div key={title} className="trust-chip">
                     <strong>{title}</strong>
@@ -81,13 +81,13 @@ export default function HomePage() {
 
         <section className="page-shell py-12" id="formats">
           <div className="mx-auto max-w-3xl text-center">
-            <span className="section-label">Choose a format</span>
+            <span className="section-label">Start here</span>
             <h2 className="heading-display mt-4 text-4xl font-semibold text-stone-950 sm:text-5xl">
-              Five gift-ready game styles
+              Pick the game that fits their story
             </h2>
             <p className="mx-auto mt-4 max-w-2xl text-sm leading-7 text-stone-600">
-              Each format has its own questionnaire, proof renderer, card decks, box
-              contents, pricing, and fulfillment recipe.
+              Every format has its own quiz, sample proof, card decks, box contents,
+              and price. Start with the closest fit; we handle the custom copy and files.
             </p>
           </div>
 
@@ -109,18 +109,18 @@ export default function HomePage() {
             {[
               {
                 step: "01",
-                title: "Answer the quiz",
-                body: "Choose people, places, jokes, categories, and tone. Add custom text only where it helps.",
+                title: "Take the quick quiz",
+                body: "Pick the people, places, jokes, and tone. Type only the details that make the gift feel personal.",
               },
               {
                 step: "02",
-                title: "Approve the proof",
-                body: "We generate the board, cards, and rules as editable real text, not unreliable text inside images.",
+                title: "Review the proof",
+                body: "See the board, cards, and rules before payment. All important words are editable real text.",
               },
               {
                 step: "03",
-                title: "Download or ship",
-                body: "Digital kits unlock after payment. Boxed games route to a US manufacturer with sourced pieces.",
+                title: "Download or ship it",
+                body: "Digital files unlock after checkout. Boxed games are produced in the US with pieces included.",
               },
             ].map((item) => (
               <div key={item.step} className="process-step">
@@ -137,17 +137,21 @@ export default function HomePage() {
         <section className="page-shell py-12">
           <div className="launch-ready-panel">
             <div>
-              <span className="section-label">What ships</span>
+              <span className="section-label">What they receive</span>
               <h2 className="heading-display mt-4 text-4xl font-semibold text-stone-950">
-                A finished game kit, not a printout and a prayer.
+                Everything needed to open the box and play.
               </h2>
+              <p className="mt-4 max-w-xl text-sm leading-7 text-stone-600">
+                No hunting for dice, pawns, card sleeves, or instructions. The boxed
+                tier is designed as a complete gift, not a craft project.
+              </p>
             </div>
             <div className="grid gap-3 sm:grid-cols-2">
               {[
-                "Printed board or digital board file",
+                "Custom board art and editable text",
                 "Two personalized card decks",
-                "Playable rules booklet",
-                "Stock pieces, die, and tokens for boxed games",
+                "Clear rules booklet for 2-6 players",
+                "Stock pieces, die, and tokens in boxed games",
                 "Guest checkout and order lookup",
                 launchConfig.supportPromiseCopy,
               ].map((item) => (
@@ -217,7 +221,7 @@ function TemplateCard({
       <p className="mt-4 text-xs leading-5 text-stone-500">{productionEtaCopy}</p>
 
       <Link href={`/create/${slug}`} className="catalog-cta mt-5">
-        Start
+        Customize {template.name}
       </Link>
     </article>
   );

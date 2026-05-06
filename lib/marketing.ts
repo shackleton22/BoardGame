@@ -10,7 +10,7 @@ export type TemplateMarketingProfile = {
 
 export const TEMPLATE_MARKETING: Record<TemplateSlug, TemplateMarketingProfile> = {
   "home-turf": {
-    eyebrow: "For hometown gifts and favorite-place stories",
+    eyebrow: "For favorite places and local legends",
     idealFor: ["Housewarmings", "Couples", "Families", "Friend groups"],
     personalize: [
       "Homes, restaurants, trips, rituals, local legends, and favorite routes",
@@ -20,10 +20,10 @@ export const TEMPLATE_MARKETING: Record<TemplateSlug, TemplateMarketingProfile> 
     emotionalPromise:
       "Feels like their personal map turned into a replayable strategy gift.",
     leadLine:
-      "A place-collecting keepsake built from meaningful spots, local lore, story prompts, and shortcuts.",
+      "Turn first apartments, favorite restaurants, road trips, and neighborhood lore into a board they can play.",
   },
   "milestone-trail": {
-    eyebrow: "For milestone gifts and heartfelt stories",
+    eyebrow: "For birthdays, anniversaries, and big chapters",
     idealFor: ["Anniversaries", "Birthdays", "Retirement", "Family milestones"],
     personalize: [
       "Life chapters, places, habits, milestones, and favorite people",
@@ -33,10 +33,10 @@ export const TEMPLATE_MARKETING: Record<TemplateSlug, TemplateMarketingProfile> 
     emotionalPromise:
       "Feels like a warm, replayable tribute rather than a novelty gift.",
     leadLine:
-      "A premium journey board that turns a life story into something the whole table can replay.",
+      "Build a warm journey game from the places, wins, habits, and memories that shaped someone's life.",
   },
   "face-card": {
-    eyebrow: "For families, teams, and friend groups",
+    eyebrow: "For groups where everyone has a tell",
     idealFor: ["Reunions", "Teams", "Friend groups", "Family game night"],
     personalize: [
       "People, pets, roles, habits, tells, decoys, and catchphrases",
@@ -46,10 +46,10 @@ export const TEMPLATE_MARKETING: Record<TemplateSlug, TemplateMarketingProfile> 
     emotionalPromise:
       "Feels instantly familiar because the cast is literally your people.",
     leadLine:
-      "A playful people-guessing game built from familiar faces, tells, decoys, and group lore.",
+      "Create a social guessing game from your real cast: habits, catchphrases, tells, decoys, and pets included.",
   },
   "case-file": {
-    eyebrow: "For group gifts and story-forward surprises",
+    eyebrow: "For mystery lovers and dramatic groups",
     idealFor: ["Friend groups", "Family reunions", "Date nights", "Birthdays"],
     personalize: [
       "Suspects, scenes, clues, and the final twist",
@@ -59,10 +59,10 @@ export const TEMPLATE_MARKETING: Record<TemplateSlug, TemplateMarketingProfile> 
     emotionalPromise:
       "Feels clever, theatrical, and deeply specific to the people in the room.",
     leadLine:
-      "A mystery keepsake built from familiar faces, suspicious details, and group lore.",
+      "Cast your friends or family as suspects, scenes, clues, and twists in a mystery made just for them.",
   },
   "trivia-trek": {
-    eyebrow: "For lively groups, couples, and family game night",
+    eyebrow: "For inside jokes, lore, and friendly arguments",
     idealFor: ["Reunions", "Couples", "Family nights", "Friend-group gifts"],
     personalize: [
       "Question categories, answer anchors, stories, and signature lines",
@@ -72,7 +72,7 @@ export const TEMPLATE_MARKETING: Record<TemplateSlug, TemplateMarketingProfile> 
     emotionalPromise:
       "Feels social, fast, and unmistakably built for your inside references.",
     leadLine:
-      "A polished trivia-night keepsake made from the stories and answers only your people would know.",
+      "Make a trivia game from the stories, categories, quotes, and answers only your people would know.",
   },
 };
 
