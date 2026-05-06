@@ -6,13 +6,14 @@ import { startTransition, useMemo, useState } from "react";
 
 import {
   BUILDER_INPUT_CLASS,
-  BUILDER_SELECT_CLASS,
   ChoiceGrid,
   EmailField,
   FieldLabel,
+  GiftBasicsFields,
   MultiChoiceGrid,
   ProductTierCards,
   QuestionCard,
+  QuizExpectationPanel,
   SOFT_PANEL_CLASS,
   ShippingFields,
   StepTabs,
@@ -389,85 +390,29 @@ export function InsideJokeShowdownWizard({
         <QuestionCard
           eyebrow="Step 1"
           title="Who is this trivia gift for?"
-          description="Start with the basics, then we'll build the game from the group's shared lore."
+          description="Start with names and three quick choices. Then we will build the categories, bonus rounds, and signature answers."
         >
-          <div className="grid gap-4 md:grid-cols-2">
-            <label className={SOFT_PANEL_CLASS}>
-              <FieldLabel title="Recipient name" />
-              <input
-                value={state.recipientName}
-                onChange={(event) => updateState("recipientName", event.target.value)}
-                className={`${BUILDER_INPUT_CLASS} mt-4`}
-                placeholder="Taylor"
-              />
-            </label>
-
-            <label className={SOFT_PANEL_CLASS}>
-              <FieldLabel title="Your name" />
-              <input
-                value={state.buyerName}
-                onChange={(event) => updateState("buyerName", event.target.value)}
-                className={`${BUILDER_INPUT_CLASS} mt-4`}
-                placeholder="Jamie"
-              />
-            </label>
-          </div>
-
-          <div className="grid gap-4 md:grid-cols-3">
-            <label className={SOFT_PANEL_CLASS}>
-              <FieldLabel title="Occasion" />
-              <select
-                value={state.occasion}
-                onChange={(event) =>
-                  updateState("occasion", event.target.value as (typeof OCCASION_OPTIONS)[number])
-                }
-                className={`${BUILDER_SELECT_CLASS} mt-4`}
-              >
-                {OCCASION_OPTIONS.map((option) => (
-                  <option key={option} value={option}>
-                    {option.replace(/\b\w/g, (character) => character.toUpperCase())}
-                  </option>
-                ))}
-              </select>
-            </label>
-
-            <label className={SOFT_PANEL_CLASS}>
-              <FieldLabel title="Relationship" />
-              <select
-                value={state.relationship}
-                onChange={(event) =>
-                  updateState(
-                    "relationship",
-                    event.target.value as (typeof RELATIONSHIP_OPTIONS)[number],
-                  )
-                }
-                className={`${BUILDER_SELECT_CLASS} mt-4`}
-              >
-                {RELATIONSHIP_OPTIONS.map((option) => (
-                  <option key={option} value={option}>
-                    {option.replace(/\b\w/g, (character) => character.toUpperCase())}
-                  </option>
-                ))}
-              </select>
-            </label>
-
-            <label className={SOFT_PANEL_CLASS}>
-              <FieldLabel title="Tone" />
-              <select
-                value={state.tone}
-                onChange={(event) =>
-                  updateState("tone", event.target.value as (typeof TONE_OPTIONS)[number])
-                }
-                className={`${BUILDER_SELECT_CLASS} mt-4`}
-              >
-                {TONE_OPTIONS.map((option) => (
-                  <option key={option} value={option}>
-                    {option.replace(/\b\w/g, (character) => character.toUpperCase())}
-                  </option>
-                ))}
-              </select>
-            </label>
-          </div>
+          <QuizExpectationPanel
+            templateName="Trivia Trek"
+            summary="We will ask for trivia categories, bonus rounds, signature answers, and delivery."
+            checkpoints={[
+              "Pick 4+ categories",
+              "Pick bonus rounds",
+              "Review a proof before paying",
+            ]}
+          />
+          <GiftBasicsFields
+            recipientName={state.recipientName}
+            buyerName={state.buyerName}
+            occasion={state.occasion}
+            relationship={state.relationship}
+            tone={state.tone}
+            onRecipientNameChange={(value) => updateState("recipientName", value)}
+            onBuyerNameChange={(value) => updateState("buyerName", value)}
+            onOccasionChange={(value) => updateState("occasion", value)}
+            onRelationshipChange={(value) => updateState("relationship", value)}
+            onToneChange={(value) => updateState("tone", value)}
+          />
         </QuestionCard>
       ) : null}
 

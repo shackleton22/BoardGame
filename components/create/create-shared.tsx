@@ -2,6 +2,11 @@
 
 import { ProductTier } from "@prisma/client";
 
+import {
+  OCCASION_OPTIONS,
+  RELATIONSHIP_OPTIONS,
+  TONE_OPTIONS,
+} from "@/lib/constants";
 import { formatPrice } from "@/lib/utils";
 
 export type ShippingState = {
@@ -48,9 +53,13 @@ export function splitLineValue(line: string) {
 export function StepTabs({
   steps,
   step,
+  estimate = "About 3-5 minutes",
+  helper = "Mostly tap-to-answer. You can edit the generated proof before checkout.",
 }: {
   steps: readonly string[];
   step: number;
+  estimate?: string;
+  helper?: string;
 }) {
   const total = steps.length;
   const current = steps[step] ?? steps[0] ?? "Build";
@@ -65,8 +74,13 @@ export function StepTabs({
           </div>
           <div className="mt-2 text-lg font-semibold text-stone-950">{current}</div>
         </div>
-        <div className="text-sm font-semibold text-stone-500">
-          Step {step + 1} of {total}
+        <div className="text-sm font-semibold text-stone-500 sm:text-right">
+          <div>
+            Step {step + 1} of {total}
+          </div>
+          <div className="mt-1 text-xs font-semibold uppercase tracking-[0.16em] text-stone-400">
+            {estimate}
+          </div>
         </div>
       </div>
 
@@ -76,7 +90,147 @@ export function StepTabs({
           style={{ width: progressWidth }}
         />
       </div>
+      <p className="mt-3 text-sm leading-6 text-stone-500">{helper}</p>
     </div>
+  );
+}
+
+export function QuizExpectationPanel({
+  templateName,
+  summary,
+  checkpoints,
+}: {
+  templateName: string;
+  summary: string;
+  checkpoints: readonly string[];
+}) {
+  return (
+    <aside className="rounded-[1.5rem] border border-[rgba(25,46,58,0.12)] bg-[rgba(25,46,58,0.045)] p-4 sm:p-5">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <div className="text-[0.7rem] font-bold uppercase tracking-[0.18em] text-stone-500">
+            Before you start
+          </div>
+          <p className="mt-2 max-w-2xl text-sm leading-6 text-stone-700">
+            <strong>{templateName}</strong> takes about 3-5 minutes. {summary}
+          </p>
+        </div>
+        <div className="rounded-full bg-white px-3 py-1.5 text-xs font-bold uppercase tracking-[0.14em] text-stone-600 shadow-[0_10px_24px_rgba(25,46,58,0.08)]">
+          No payment yet
+        </div>
+      </div>
+      <div className="mt-4 grid gap-2 sm:grid-cols-3">
+        {checkpoints.map((checkpoint) => (
+          <div
+            key={checkpoint}
+            className="rounded-2xl border border-[rgba(25,46,58,0.08)] bg-[rgba(255,255,255,0.74)] px-3 py-3 text-sm font-semibold leading-5 text-stone-700"
+          >
+            {checkpoint}
+          </div>
+        ))}
+      </div>
+    </aside>
+  );
+}
+
+export function GiftBasicsFields({
+  recipientName,
+  buyerName,
+  occasion,
+  relationship,
+  tone,
+  onRecipientNameChange,
+  onBuyerNameChange,
+  onOccasionChange,
+  onRelationshipChange,
+  onToneChange,
+}: {
+  recipientName: string;
+  buyerName: string;
+  occasion: (typeof OCCASION_OPTIONS)[number];
+  relationship: (typeof RELATIONSHIP_OPTIONS)[number];
+  tone: (typeof TONE_OPTIONS)[number];
+  onRecipientNameChange: (value: string) => void;
+  onBuyerNameChange: (value: string) => void;
+  onOccasionChange: (value: (typeof OCCASION_OPTIONS)[number]) => void;
+  onRelationshipChange: (value: (typeof RELATIONSHIP_OPTIONS)[number]) => void;
+  onToneChange: (value: (typeof TONE_OPTIONS)[number]) => void;
+}) {
+  return (
+    <>
+      <div className="grid gap-4 md:grid-cols-2">
+        <label className={SOFT_PANEL_CLASS}>
+          <FieldLabel
+            title="Who is receiving it?"
+            hint="Use the name that should appear on the board and proof."
+          />
+          <input
+            value={recipientName}
+            onChange={(event) => onRecipientNameChange(event.target.value)}
+            className={`${BUILDER_INPUT_CLASS} mt-4`}
+            placeholder="Taylor"
+          />
+        </label>
+
+        <label className={SOFT_PANEL_CLASS}>
+          <FieldLabel
+            title="Who is giving it?"
+            hint="This helps us write the gift note and proof language."
+          />
+          <input
+            value={buyerName}
+            onChange={(event) => onBuyerNameChange(event.target.value)}
+            className={`${BUILDER_INPUT_CLASS} mt-4`}
+            placeholder="Jamie"
+          />
+        </label>
+      </div>
+
+      <div className={SOFT_PANEL_CLASS}>
+        <FieldLabel
+          title="What's the occasion?"
+          hint="This shapes the title, subtitle, card copy, and rules tone."
+        />
+        <div className="mt-4">
+          <ChoiceGrid
+            value={occasion}
+            options={OCCASION_OPTIONS}
+            columnsClass="sm:grid-cols-2 xl:grid-cols-3"
+            onSelect={onOccasionChange}
+          />
+        </div>
+      </div>
+
+      <div className={SOFT_PANEL_CLASS}>
+        <FieldLabel
+          title="Who are they to you?"
+          hint="We use this to avoid copy that feels generic or emotionally off."
+        />
+        <div className="mt-4">
+          <ChoiceGrid
+            value={relationship}
+            options={RELATIONSHIP_OPTIONS}
+            columnsClass="sm:grid-cols-2 xl:grid-cols-3"
+            onSelect={onRelationshipChange}
+          />
+        </div>
+      </div>
+
+      <div className={SOFT_PANEL_CLASS}>
+        <FieldLabel
+          title="What should the game feel like?"
+          hint="Pick the energy you want. We can make it sweet, funny, polished, or chaotic."
+        />
+        <div className="mt-4">
+          <ChoiceGrid
+            value={tone}
+            options={TONE_OPTIONS}
+            columnsClass="sm:grid-cols-2 xl:grid-cols-3"
+            onSelect={onToneChange}
+          />
+        </div>
+      </div>
+    </>
   );
 }
 
