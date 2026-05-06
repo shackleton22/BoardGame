@@ -76,6 +76,14 @@ export const LIFE_QUEST_PLACEHOLDERS = [
   "The karaoke phase",
 ] as const;
 
+export const LIFE_QUEST_ERA_OPTIONS = [
+  "childhood",
+  "teen years",
+  "young adult years",
+  "recent years",
+  "timeless",
+] as const;
+
 export const MYSTERY_NIGHT_SUSPECT_PLACEHOLDERS = [
   "The snack thief",
   "The trivia champion",
@@ -99,30 +107,47 @@ export const MYSTERY_NIGHT_CLUE_PLACEHOLDERS = [
   "A mystery keychain",
 ] as const;
 
+export const MYSTERY_SUSPICION_OPTIONS = ["low", "medium", "high"] as const;
+
+export const MYSTERY_LOCATION_MOOD_OPTIONS = [
+  "cozy",
+  "dramatic",
+  "chaotic",
+  "nostalgic",
+  "glamorous",
+] as const;
+
 export const INSIDE_JOKE_PLACEHOLDERS = [
-  "That one phrase everyone repeats",
-  "The cursed group chat idea",
-  "The road trip snack debate",
-  "The dramatic birthday toast",
-  "The fake rivalry",
-  "The impossible parking story",
+  "Family vacations",
+  "First apartment lore",
+  "Favorite restaurants",
+  "Holiday disasters",
+  "Pet chaos",
+  "Career milestones",
 ] as const;
 
 export const INSIDE_JOKE_CHALLENGE_PLACEHOLDERS = [
-  "Act it out in ten seconds",
-  "Name the person most likely to start it",
-  "Tell the origin story",
-  "Give it a chaos rating",
+  "Ask a tie-breaker",
+  "Finish the quote",
+  "Name who started it",
+  "Guess the year",
 ] as const;
+
+export const TRIVIA_DIFFICULTY_OPTIONS = ["easy", "medium", "hard"] as const;
 
 export const PROTECTED_REFERENCE_TERMS = [
   "monopoly",
   "clue",
+  "guess who",
   "hasbro",
   "scrabble",
   "risk",
   "catan",
   "sorry",
   "the game of life",
+  "trivial pursuit",
+  "pictionary",
+  "scattergories",
+  "taboo",
   "uno",
 ] as const;

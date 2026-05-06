@@ -38,6 +38,10 @@ export function escapeXml(value: string) {
     .replace(/>/g, "&gt;");
 }
 
+export function escapeHtml(value: string) {
+  return escapeXml(value);
+}
+
 export function chunk<T>(items: T[], size: number) {
   const chunks: T[][] = [];
 

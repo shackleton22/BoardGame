@@ -32,7 +32,7 @@ export async function generateInsideJokeShowdownContent(
       source: "ai",
     };
   } catch (error) {
-    await captureServerError(error, { template: "inside-joke-showdown", stage: "generate" });
+    await captureServerError(error, { template: "trivia-trek", stage: "generate" });
     return { output: buildFallbackInsideJokeShowdown(input), source: "fallback" };
   }
 }

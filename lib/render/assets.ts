@@ -11,6 +11,7 @@ import { db } from "@/lib/db";
 import { renderCardsPdf } from "@/lib/render/cardsPdf";
 import { renderRulesPdf } from "@/lib/render/rulesPdf";
 import { readStoredFile, storeGeneratedFile } from "@/lib/storage";
+import { buildTemplateDecorativeImageDataUrl } from "@/lib/templates/preview-art";
 import { getTemplateDefinition, type TemplateSlug } from "@/lib/templates/registry";
 import type { ProjectOutputPayload } from "@/lib/validation/project";
 
@@ -91,18 +92,37 @@ async function renderBoardPdf(png: Buffer) {
   return Buffer.from(await pdf.save());
 }
 
-async function getBackgroundArtDataUrl(projectId: string, artPrompt: string | undefined) {
+async function getBackgroundArtDataUrl(
+  projectId: string,
+  templateSlug: TemplateSlug,
+  artPrompt: string | undefined,
+  project: {
+    recipientName: string;
+    occasion: string;
+    output: ProjectOutputPayload;
+    inputJson?: unknown;
+  },
+  options: {
+    forceRegenerate?: boolean;
+  } = {},
+) {
   if (!artPrompt) {
-    return undefined;
+    return buildTemplateDecorativeImageDataUrl(templateSlug);
   }
 
   const artwork = await generateBoardArtwork({
     projectId,
     prompt: artPrompt,
+    templateSlug,
+    recipientName: project.recipientName,
+    occasion: project.occasion,
+    output: project.output,
+    inputJson: project.inputJson,
+    forceRegenerate: options.forceRegenerate,
   });
 
   if (!artwork?.storageKey) {
-    return undefined;
+    return buildTemplateDecorativeImageDataUrl(templateSlug);
   }
 
   const bytes = await readStoredFile(artwork.storageKey);
@@ -116,11 +136,24 @@ export async function generatePreviewAssets(project: {
   occasion: string;
   visualStyle: string;
   colorMood: string;
+  inputJson?: unknown;
   outputJson: unknown;
+  forceRegenerateArtwork?: boolean;
 }) {
   const output = project.outputJson as ProjectOutputPayload;
   const template = getTemplateDefinition(project.templateSlug);
-  const backgroundArtDataUrl = await getBackgroundArtDataUrl(project.id, output.artPrompt);
+  const backgroundArtDataUrl = await getBackgroundArtDataUrl(
+    project.id,
+    project.templateSlug,
+    output.artPrompt,
+    {
+      recipientName: project.recipientName,
+      occasion: project.occasion,
+      output,
+      inputJson: project.inputJson,
+    },
+    { forceRegenerate: project.forceRegenerateArtwork },
+  );
   const svg = template.renderBoard({
     output,
     project: {
@@ -162,7 +195,17 @@ export async function generatePreviewAssets(project: {
 export async function generateFinalAssets(project: Project & { templateSlug: string }) {
   const output = project.outputJson as ProjectOutputPayload;
   const template = getTemplateDefinition(project.templateSlug as TemplateSlug);
-  const backgroundArtDataUrl = await getBackgroundArtDataUrl(project.id, output.artPrompt);
+  const backgroundArtDataUrl = await getBackgroundArtDataUrl(
+    project.id,
+    project.templateSlug as TemplateSlug,
+    output.artPrompt,
+    {
+      recipientName: project.recipientName,
+      occasion: project.occasion,
+      output,
+      inputJson: project.inputJson,
+    },
+  );
   const boardSvg = template.renderBoard({
     output,
     project: {

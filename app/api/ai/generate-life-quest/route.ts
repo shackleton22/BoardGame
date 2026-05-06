@@ -15,7 +15,7 @@ export async function POST(request: Request) {
     return NextResponse.json(
       {
         error:
-          error instanceof Error ? error.message : "Unable to generate Life Quest content.",
+        error instanceof Error ? error.message : "Unable to generate Milestone Trail content.",
       },
       { status: 400 },
     );

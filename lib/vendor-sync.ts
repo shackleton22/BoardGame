@@ -5,6 +5,7 @@ import {
   cancelTheGameCrafterVendorOrder,
   syncTheGameCrafterVendorOrder,
 } from "@/lib/fulfillment/theGameCrafterProvider";
+import { captureServerError } from "@/lib/monitoring";
 import { recordOperationalEvent } from "@/lib/operations";
 import { sendTransactionalEmail } from "@/lib/email";
 
@@ -117,7 +118,25 @@ export async function syncPendingVendorOrders() {
   const results = [];
 
   for (const vendorOrder of vendorOrders) {
-    results.push(await syncVendorOrder(vendorOrder.id));
+    try {
+      results.push(await syncVendorOrder(vendorOrder.id));
+    } catch (error) {
+      await captureServerError(error, {
+        vendorOrderId: vendorOrder.id,
+        provider: vendorOrder.provider,
+        stage: "vendor_sync",
+      });
+      await recordOperationalEvent({
+        orderId: vendorOrder.orderId,
+        scope: "vendor_sync",
+        eventType: "sync_failed",
+        message: error instanceof Error ? error.message : "Vendor sync failed.",
+      });
+      results.push({
+        provider: vendorOrder.provider,
+        error: error instanceof Error ? error.message : "Vendor sync failed.",
+      });
+    }
   }
 
   return results;

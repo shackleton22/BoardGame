@@ -13,6 +13,10 @@ import { sendTransactionalEmail } from "@/lib/email";
 import { getAppUrl } from "@/lib/env";
 import { submitFulfillment } from "@/lib/fulfillment";
 import { buildFulfillmentPlan } from "@/lib/fulfillment/plan";
+import {
+  assertProductTierLaunchEnabled,
+  assertTemplateLaunchEnabled,
+} from "@/lib/launch/config";
 import { getTemplateTierDetails, type TemplateSlug } from "@/lib/templates/registry";
 import { createFulfillmentManifest } from "@/lib/render/fulfillmentManifest";
 import { generateFinalAssets } from "@/lib/render/assets";
@@ -66,6 +70,14 @@ export async function createCheckoutSession(args: {
     where: { id: args.projectId },
     include: {
       template: true,
+      orders: {
+        where: {
+          status: {
+            in: [OrderStatus.paid, OrderStatus.pending],
+          },
+        },
+        orderBy: { createdAt: "desc" },
+      },
       shippingQuotes: {
         orderBy: { createdAt: "desc" },
       },
@@ -74,6 +86,17 @@ export async function createCheckoutSession(args: {
 
   if (!project) {
     throw new Error("Project not found.");
+  }
+
+  assertTemplateLaunchEnabled(project.templateSlug);
+  assertProductTierLaunchEnabled(project.productTier);
+
+  if (!project.outputJson || project.status === ProjectStatus.failed) {
+    throw new Error("This proof is not ready for checkout yet.");
+  }
+
+  if (project.orders.some((order) => order.status === OrderStatus.paid)) {
+    throw new Error("This project has already been purchased.");
   }
 
   const tier = getTemplateTierDetails(
@@ -96,6 +119,9 @@ export async function createCheckoutSession(args: {
       where: {
         id: args.shippingQuoteId,
         projectId: project.id,
+        status: {
+          in: ["active", "selected"],
+        },
       },
     });
 
@@ -206,7 +232,10 @@ export async function findOrderForSuccessPage(sessionId?: string | null) {
     include: {
       shippingQuote: true,
       project: {
-        include: { assets: { orderBy: { createdAt: "asc" } } },
+        include: {
+          template: true,
+          assets: { orderBy: { createdAt: "asc" } },
+        },
       },
       vendorOrder: {
         include: {
@@ -233,7 +262,10 @@ export async function findOrderForSuccessPage(sessionId?: string | null) {
     include: {
       shippingQuote: true,
       project: {
-        include: { assets: { orderBy: { createdAt: "asc" } } },
+        include: {
+          template: true,
+          assets: { orderBy: { createdAt: "asc" } },
+        },
       },
       vendorOrder: {
         include: {
@@ -257,7 +289,10 @@ export async function lookupOrderByNumber(args: { orderNumber: string; email: st
     include: {
       shippingQuote: true,
       project: {
-        include: { assets: { orderBy: { createdAt: "asc" } } },
+        include: {
+          template: true,
+          assets: { orderBy: { createdAt: "asc" } },
+        },
       },
       vendorOrder: {
         include: {
@@ -267,6 +302,20 @@ export async function lookupOrderByNumber(args: { orderNumber: string; email: st
       fulfillmentJobs: { orderBy: { createdAt: "desc" } },
     },
   });
+}
+
+const FINAL_ASSET_TYPES = [
+  "board_final_png",
+  "board_final_pdf",
+  "deck_primary_pdf",
+  "deck_secondary_pdf",
+  "rules_pdf",
+] as const;
+
+function hasAllFinalAssets(assets: Array<{ type: string }>) {
+  return FINAL_ASSET_TYPES.every((type) =>
+    assets.some((asset) => asset.type === type),
+  );
 }
 
 export async function processCompletedCheckoutSession(
@@ -298,58 +347,82 @@ export async function processCompletedCheckoutSession(
     throw new Error("Order not found for checkout session.");
   }
 
-  if (existing.status === OrderStatus.paid) {
-    return existing;
+  const wasAlreadyPaid = existing.status === OrderStatus.paid;
+  const hadFinalAssets = hasAllFinalAssets(existing.project.assets);
+
+  const updatedOrder = wasAlreadyPaid
+    ? existing
+    : await db.order.update({
+        where: { id: existing.id },
+        data: {
+          status: OrderStatus.paid,
+          stripeSessionId: session.id,
+          stripePaymentIntentId:
+            typeof session.payment_intent === "string"
+              ? session.payment_intent
+              : undefined,
+          email:
+            session.customer_details?.email ||
+            existing.email ||
+            session.metadata?.customerEmail ||
+            undefined,
+        },
+        include: {
+          shippingQuote: true,
+          project: {
+            include: {
+              assets: true,
+            },
+          },
+          fulfillmentJobs: true,
+          vendorOrder: {
+            include: {
+              shipments: true,
+            },
+          },
+        },
+      });
+
+  if (!wasAlreadyPaid) {
+    await db.project.update({
+      where: { id: updatedOrder.projectId },
+      data: { status: ProjectStatus.paid },
+    });
+
+    await recordOperationalEvent({
+      projectId: updatedOrder.projectId,
+      orderId: updatedOrder.id,
+      scope: "order",
+      eventType: "paid",
+      message: "Stripe Checkout payment completed.",
+      metadata: {
+        stripeSessionId: session.id,
+      },
+    });
+
+    await sendTransactionalEmail({
+      template: "order_confirmation",
+      to: updatedOrder.email,
+      payload: {
+        orderNumber: updatedOrder.publicOrderNumber,
+        recipientName: updatedOrder.project.recipientName,
+      },
+    });
   }
 
-  const updatedOrder = await db.order.update({
-    where: { id: existing.id },
-    data: {
-      status: OrderStatus.paid,
-      stripeSessionId: session.id,
-      stripePaymentIntentId:
-        typeof session.payment_intent === "string"
-          ? session.payment_intent
-          : undefined,
-      email:
-        session.customer_details?.email ||
-        existing.email ||
-        session.metadata?.customerEmail ||
-        undefined,
-    },
-    include: {
-      shippingQuote: true,
-      project: {
-        include: {
-          assets: true,
-        },
-      },
-      fulfillmentJobs: true,
-      vendorOrder: {
-        include: {
-          shipments: true,
-        },
-      },
-    },
-  });
+  if (
+    updatedOrder.shippingQuoteId &&
+    updatedOrder.shippingQuote?.status !== "used"
+  ) {
+    await db.shippingQuote.update({
+      where: { id: updatedOrder.shippingQuoteId },
+      data: { status: "used" },
+    });
+  }
 
-  await db.project.update({
-    where: { id: updatedOrder.projectId },
-    data: { status: ProjectStatus.paid },
-  });
-
-  await recordOperationalEvent({
-    projectId: updatedOrder.projectId,
-    orderId: updatedOrder.id,
-    scope: "order",
-    eventType: "paid",
-    message: "Stripe Checkout payment completed.",
-    metadata: {
-      stripeSessionId: session.id,
-    },
-  });
-
-  const finalAssets = await generateFinalAssets(updatedOrder.project);
+  const finalAssets = hadFinalAssets
+    ? updatedOrder.project.assets
+    : await generateFinalAssets(updatedOrder.project);
   const fulfillmentPlan = buildFulfillmentPlan({
     templateSlug: updatedOrder.templateSlug as TemplateSlug,
     productTier: updatedOrder.productTier,
@@ -374,29 +447,22 @@ export async function processCompletedCheckoutSession(
     },
   });
 
-  await sendTransactionalEmail({
-    template: "order_confirmation",
-    to: updatedOrder.email,
-    payload: {
-      orderNumber: updatedOrder.publicOrderNumber,
-      recipientName: updatedOrder.project.recipientName,
-    },
-  });
-
   if (updatedOrder.productTier === ProductTier.digital_print_kit) {
     await db.project.update({
       where: { id: updatedOrder.projectId },
       data: { status: ProjectStatus.asset_ready },
     });
 
-    await sendTransactionalEmail({
-      template: "digital_ready",
-      to: updatedOrder.email,
-      payload: {
-        orderNumber: updatedOrder.publicOrderNumber,
-        successUrl: `${getAppUrl()}/order/success?session_id=${session.id}`,
-      },
-    });
+    if (!wasAlreadyPaid || !hadFinalAssets) {
+      await sendTransactionalEmail({
+        template: "digital_ready",
+        to: updatedOrder.email,
+        payload: {
+          orderNumber: updatedOrder.publicOrderNumber,
+          successUrl: `${getAppUrl()}/order/success?session_id=${session.id}`,
+        },
+      });
+    }
 
     return updatedOrder;
   }

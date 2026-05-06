@@ -38,13 +38,23 @@ type TgcShipment = {
 };
 
 async function parseTgcResponse<T>(response: Response) {
-  const payload = (await response.json()) as {
+  const text = await response.text();
+  let payload: {
     result?: T;
     error?: { message?: string };
-  };
+  } = {};
+
+  try {
+    payload = text ? JSON.parse(text) : {};
+  } catch {
+    payload = {};
+  }
 
   if (!response.ok || payload.error) {
-    throw new Error(payload.error?.message || `The Game Crafter request failed with ${response.status}.`);
+    throw new Error(
+      payload.error?.message ||
+        `The Game Crafter request failed with ${response.status}: ${text.slice(0, 240)}`,
+    );
   }
 
   return (payload.result ?? payload) as T;

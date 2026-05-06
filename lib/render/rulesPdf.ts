@@ -47,7 +47,7 @@ export async function renderRulesPdf(args: {
     });
 
     lines.forEach((line, index) => {
-      page.drawText(`• ${line}`, {
+      page.drawText(`- ${line}`, {
         x: margin + 4,
         y: startY - 24 - index * 18,
         size: 11,
@@ -69,7 +69,7 @@ export async function renderRulesPdf(args: {
     250,
   );
 
-  page.drawText(`${APP_NAME} · Giftable custom board games`, {
+  page.drawText(`${APP_NAME} | Giftable custom board games`, {
     x: margin,
     y: 40,
     size: 10,

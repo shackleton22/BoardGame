@@ -7,11 +7,13 @@ import { getTemplateDefinition, type TemplateSlug } from "@/lib/templates/regist
 export type FulfillmentPlan = {
   templateSlug: TemplateSlug;
   recipeLabel: string;
+  bomVersion: string;
   selectedProvider: "mock" | "the_game_crafter";
   recommendedProvider: "mock" | "the_game_crafter";
   supportedProviders: Array<"mock" | "the_game_crafter">;
   customerFacingSummary: string[];
   assemblySteps: string[];
+  packoutChecklist: string[];
   operationalNotes: string[];
   outstandingChecklist: string[];
   productionWindow: {
@@ -41,18 +43,22 @@ export function buildFulfillmentPlan(args: {
   const recommendedProvider =
     args.productTier === ProductTier.printed_board_cards ? "the_game_crafter" : "mock";
   const selectedProvider =
-    recommendedProvider === "the_game_crafter" && hasTheGameCrafterConfig()
+    recommendedProvider === "the_game_crafter" &&
+    hasTheGameCrafterConfig() &&
+    recipe.deliveryStatus === "api_automated"
       ? "the_game_crafter"
       : "mock";
 
   return {
     templateSlug: args.templateSlug,
     recipeLabel: recipe.label,
+    bomVersion: recipe.bomVersion,
     selectedProvider,
     recommendedProvider,
     supportedProviders: ["the_game_crafter", "mock"],
     customerFacingSummary: recipe.customerFacingSummary,
     assemblySteps: recipe.assemblySteps,
+    packoutChecklist: recipe.packoutChecklist,
     operationalNotes: recipe.operationalNotes,
     outstandingChecklist:
       selectedProvider === "mock"

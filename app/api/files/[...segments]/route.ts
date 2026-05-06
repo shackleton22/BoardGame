@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-import { readStoredFile } from "@/lib/storage";
+import { buildSafeGeneratedStorageKeyFromSegments, readStoredFile } from "@/lib/storage";
 import { guessMimeType } from "@/lib/utils";
 
 export const runtime = "nodejs";
@@ -10,9 +10,13 @@ export async function GET(
   context: { params: Promise<{ segments: string[] }> },
 ) {
   const { segments } = await context.params;
-  const storageKey = segments.map((segment) => decodeURIComponent(segment)).join("/");
+  const storageKey = buildSafeGeneratedStorageKeyFromSegments(segments);
 
   try {
+    if (!storageKey) {
+      return NextResponse.json({ error: "File not found." }, { status: 404 });
+    }
+
     const bytes = await readStoredFile(storageKey);
     const fileName = segments[segments.length - 1] ?? "file";
 

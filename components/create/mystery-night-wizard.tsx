@@ -2,44 +2,68 @@
 
 import { ProductTier } from "@prisma/client";
 import { useRouter } from "next/navigation";
-import { startTransition, useState } from "react";
+import { startTransition, useMemo, useState } from "react";
 
 import {
+  BUILDER_INPUT_CLASS,
+  BUILDER_SELECT_CLASS,
+  ChoiceGrid,
   EmailField,
+  FieldLabel,
+  MultiChoiceGrid,
   ProductTierCards,
-  RecipientOccasionFields,
+  QuestionCard,
+  SOFT_PANEL_CLASS,
   ShippingFields,
   StepTabs,
-  StyleFields,
-  type ShippingState,
   WizardFooter,
+  type ShippingState,
 } from "@/components/create/create-shared";
 import { TurnstileWidget } from "@/components/shared/turnstile-widget";
 import {
-  ITEM_CATEGORY_OPTIONS,
-  MYSTERY_NIGHT_CLUE_PLACEHOLDERS,
-  MYSTERY_NIGHT_LOCATION_PLACEHOLDERS,
-  MYSTERY_NIGHT_SUSPECT_PLACEHOLDERS,
+  COLOR_MOOD_OPTIONS,
   OCCASION_OPTIONS,
   RELATIONSHIP_OPTIONS,
   TONE_OPTIONS,
-  COLOR_MOOD_OPTIONS,
   VISUAL_STYLE_OPTIONS,
 } from "@/lib/constants";
 import { getTemplateDefinition } from "@/lib/templates/registry";
 
-type ItemCategory = (typeof ITEM_CATEGORY_OPTIONS)[number];
+type SuspectOption = {
+  id: string;
+  label: string;
+  hint: string;
+  suspicionLevel: "low" | "medium" | "high";
+};
+
+type SceneOption = {
+  id: string;
+  label: string;
+  hint: string;
+  category: "place" | "memory" | "travel" | "inside_joke";
+  mood: "cozy" | "dramatic" | "chaotic" | "nostalgic" | "glamorous";
+};
+
+type ClueOption = {
+  id: string;
+  label: string;
+  hint: string;
+  category: "memory" | "food" | "career" | "inside_joke" | "other";
+};
 
 type WizardState = {
-  templateSlug: "mystery-night";
+  templateSlug: "case-file";
   recipientName: string;
   buyerName: string;
   occasion: (typeof OCCASION_OPTIONS)[number];
   tone: (typeof TONE_OPTIONS)[number];
   relationship: (typeof RELATIONSHIP_OPTIONS)[number];
-  suspects: { name: string; role: string }[];
-  locations: { name: string; category: ItemCategory; note: string }[];
-  clues: { name: string; category: ItemCategory; note: string }[];
+  selectedSuspects: string[];
+  suspectNames: Record<string, string>;
+  selectedScenes: string[];
+  sceneNames: Record<string, string>;
+  selectedClues: string[];
+  clueNames: Record<string, string>;
   revealTwist: string;
   visualStyle: (typeof VISUAL_STYLE_OPTIONS)[number];
   colorMood: (typeof COLOR_MOOD_OPTIONS)[number];
@@ -52,40 +76,207 @@ type WizardState = {
   shipping: ShippingState;
 };
 
-const STEP_TITLES = ["Recipient", "Case file", "Style", "Product", "Generate"] as const;
-const ITEM_CATEGORIES: { label: string; value: ItemCategory }[] = [
-  { label: "Place", value: "place" },
-  { label: "Memory", value: "memory" },
-  { label: "Inside joke", value: "inside_joke" },
-  { label: "Travel", value: "travel" },
-  { label: "Other", value: "other" },
-];
-const template = getTemplateDefinition("mystery-night");
+const template = getTemplateDefinition("case-file");
+const steps = ["Gift basics", "Cast", "Scenes and clues", "Look and delivery", "Review"] as const;
 
-export function MysteryNightWizard() {
+const SUSPECT_OPTIONS: SuspectOption[] = [
+  {
+    id: "planner",
+    label: "The planner",
+    hint: "Always knows the schedule and the backup plan.",
+    suspicionLevel: "medium",
+  },
+  {
+    id: "host",
+    label: "The host",
+    hint: "Controls the room, the snacks, or both.",
+    suspicionLevel: "medium",
+  },
+  {
+    id: "wildcard",
+    label: "The wildcard",
+    hint: "Capable of anything and proud of it.",
+    suspicionLevel: "high",
+  },
+  {
+    id: "historian",
+    label: "The historian",
+    hint: "Remembers every detail and every old story.",
+    suspicionLevel: "high",
+  },
+  {
+    id: "late-arrival",
+    label: "The late arrival",
+    hint: "Always shows up with the worst timing.",
+    suspicionLevel: "medium",
+  },
+  {
+    id: "snack-thief",
+    label: "The snack thief",
+    hint: "Cannot be trusted near the evidence table.",
+    suspicionLevel: "high",
+  },
+  {
+    id: "aux-captain",
+    label: "The aux captain",
+    hint: "Too calm for someone with this much control.",
+    suspicionLevel: "medium",
+  },
+  {
+    id: "peacekeeper",
+    label: "The peacekeeper",
+    hint: "Pretends to stay out of it, which is suspicious.",
+    suspicionLevel: "low",
+  },
+];
+
+const SCENE_OPTIONS: SceneOption[] = [
+  {
+    id: "home-base",
+    label: "Home base",
+    hint: "The place everyone ends up returning to.",
+    category: "place",
+    mood: "cozy",
+  },
+  {
+    id: "trip-spot",
+    label: "Trip spot",
+    hint: "A trip or getaway the group still talks about.",
+    category: "travel",
+    mood: "nostalgic",
+  },
+  {
+    id: "favorite-table",
+    label: "Favorite table",
+    hint: "A booth, patio, or table tied to a lot of lore.",
+    category: "place",
+    mood: "cozy",
+  },
+  {
+    id: "work-scene",
+    label: "Work scene",
+    hint: "Break room, office, or workplace chaos.",
+    category: "place",
+    mood: "chaotic",
+  },
+  {
+    id: "inside-joke-scene",
+    label: "Inside-joke scene",
+    hint: "A place that only means something to this group.",
+    category: "inside_joke",
+    mood: "dramatic",
+  },
+  {
+    id: "special-event",
+    label: "Big event",
+    hint: "Wedding, reunion, birthday, or milestone setting.",
+    category: "memory",
+    mood: "glamorous",
+  },
+];
+
+const CLUE_OPTIONS: ClueOption[] = [
+  {
+    id: "receipt",
+    label: "Suspicious receipt",
+    hint: "Proof that someone was somewhere they denied visiting.",
+    category: "memory",
+  },
+  {
+    id: "photo",
+    label: "Photo evidence",
+    hint: "A picture that gives away more than it should.",
+    category: "memory",
+  },
+  {
+    id: "playlist",
+    label: "Playlist clue",
+    hint: "Music choices that point to one very specific person.",
+    category: "inside_joke",
+  },
+  {
+    id: "food-order",
+    label: "Wrong food order",
+    hint: "A coffee or meal detail that cracks the case.",
+    category: "food",
+  },
+  {
+    id: "text-thread",
+    label: "Text thread",
+    hint: "Messages that sound innocent until they absolutely do not.",
+    category: "inside_joke",
+  },
+  {
+    id: "work-item",
+    label: "Work artifact",
+    hint: "Badge, note, spreadsheet, or meeting clue.",
+    category: "career",
+  },
+  {
+    id: "souvenir",
+    label: "Trip souvenir",
+    hint: "An object that ties the whole timeline together.",
+    category: "other",
+  },
+  {
+    id: "snack-wrapper",
+    label: "Snack wrapper",
+    hint: "Small, ridiculous, and somehow devastating evidence.",
+    category: "food",
+  },
+];
+
+const TWIST_OPTIONS = [
+  "Everyone remembers the story differently",
+  "The clue was in plain sight the whole time",
+  "The wrong suspect looked too obvious",
+  "The real culprit was group chaos",
+] as const;
+
+function toggleSelection(list: string[], id: string) {
+  return list.includes(id) ? list.filter((item) => item !== id) : [...list, id];
+}
+
+function isValidEmail(value: string) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim());
+}
+
+function isShippingComplete(shipping: ShippingState) {
+  return [
+    shipping.fullName,
+    shipping.addressLine1,
+    shipping.city,
+    shipping.state,
+    shipping.postalCode,
+    shipping.phoneNumber,
+  ].every((value) => value.trim().length > 0);
+}
+
+export function MysteryNightWizard({
+  physicalCheckoutEnabled = true,
+  physicalDisabledMessage,
+}: {
+  physicalCheckoutEnabled?: boolean;
+  physicalDisabledMessage?: string;
+}) {
   const router = useRouter();
   const [step, setStep] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [state, setState] = useState<WizardState>({
-    templateSlug: "mystery-night",
+    templateSlug: "case-file",
     recipientName: "",
     buyerName: "",
     occasion: "birthday",
     tone: "adventurous",
     relationship: "group",
-    suspects: MYSTERY_NIGHT_SUSPECT_PLACEHOLDERS.map((name) => ({ name, role: "" })),
-    locations: MYSTERY_NIGHT_LOCATION_PLACEHOLDERS.map((name) => ({
-      name,
-      category: "place",
-      note: "",
-    })),
-    clues: MYSTERY_NIGHT_CLUE_PLACEHOLDERS.map((name) => ({
-      name,
-      category: "memory",
-      note: "",
-    })),
-    revealTwist: "",
+    selectedSuspects: [],
+    suspectNames: {},
+    selectedScenes: [],
+    sceneNames: {},
+    selectedClues: [],
+    clueNames: {},
+    revealTwist: TWIST_OPTIONS[0],
     visualStyle: "modern",
     colorMood: "muted",
     titleOverride: "",
@@ -107,29 +298,82 @@ export function MysteryNightWizard() {
     },
   });
 
+  const suspects = useMemo(
+    () =>
+      state.selectedSuspects.map((id) => {
+        const option = SUSPECT_OPTIONS.find((item) => item.id === id)!;
+        return {
+          name: state.suspectNames[id]?.trim() || option.label,
+          role: option.label,
+          trait: option.hint,
+          suspicionLevel: option.suspicionLevel,
+        };
+      }),
+    [state.selectedSuspects, state.suspectNames],
+  );
+
+  const locations = useMemo(
+    () =>
+      state.selectedScenes.map((id) => {
+        const option = SCENE_OPTIONS.find((item) => item.id === id)!;
+        return {
+          name: state.sceneNames[id]?.trim() || option.label,
+          category: option.category,
+          whyItMatters: option.hint,
+          mood: option.mood,
+          note: option.hint,
+        };
+      }),
+    [state.selectedScenes, state.sceneNames],
+  );
+
+  const clues = useMemo(
+    () =>
+      state.selectedClues.map((id) => {
+        const option = CLUE_OPTIONS.find((item) => item.id === id)!;
+        return {
+          name: state.clueNames[id]?.trim() || option.label,
+          category: option.category,
+          story: option.hint,
+          note: option.hint,
+        };
+      }),
+    [state.selectedClues, state.clueNames],
+  );
+
+  const currentStep = Math.min(step, steps.length - 1);
+  const reviewStep = steps.length - 1;
+
   const updateState = <K extends keyof WizardState>(key: K, value: WizardState[K]) =>
     setState((current) => ({ ...current, [key]: value }));
 
-  const updateSuspect = (index: number, key: "name" | "role", value: string) => {
-    setState((current) => {
-      const suspects = [...current.suspects];
-      suspects[index] = { ...suspects[index], [key]: value };
-      return { ...current, suspects };
-    });
-  };
-
-  const updateCollection = (
-    key: "locations" | "clues",
-    index: number,
-    field: "name" | "category" | "note",
+  const updateMapValue = (
+    key: "suspectNames" | "sceneNames" | "clueNames",
+    id: string,
     value: string,
   ) => {
-    setState((current) => {
-      const next = [...current[key]];
-      next[index] = { ...next[index], [field]: value } as (typeof next)[number];
-      return { ...current, [key]: next };
-    });
+    setState((current) => ({
+      ...current,
+      [key]: {
+        ...current[key],
+        [id]: value,
+      },
+    }));
   };
+
+  const canContinue =
+    currentStep === 0
+      ? state.recipientName.trim().length > 0 && state.buyerName.trim().length > 0
+      : currentStep === 1
+        ? state.selectedSuspects.length >= 4
+        : currentStep === 2
+          ? state.selectedScenes.length >= 3 && state.selectedClues.length >= 4
+          : currentStep === 3
+            ? (state.customerEmail.trim().length === 0 ||
+                isValidEmail(state.customerEmail)) &&
+              (state.productTier === ProductTier.digital_print_kit ||
+                isShippingComplete(state.shipping))
+            : true;
 
   const handleGenerate = async () => {
     setIsSubmitting(true);
@@ -140,10 +384,22 @@ export function MysteryNightWizard() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          ...state,
-          suspects: state.suspects.filter((item) => item.name.trim().length > 0),
-          locations: state.locations.filter((item) => item.name.trim().length > 0),
-          clues: state.clues.filter((item) => item.name.trim().length > 0),
+          templateSlug: state.templateSlug,
+          recipientName: state.recipientName,
+          buyerName: state.buyerName,
+          occasion: state.occasion,
+          tone: state.tone,
+          relationship: state.relationship,
+          suspects,
+          locations,
+          clues,
+          revealTwist: state.revealTwist,
+          visualStyle: state.visualStyle,
+          colorMood: state.colorMood,
+          titleOverride: state.titleOverride || undefined,
+          subtitleOverride: state.subtitleOverride || undefined,
+          avoidNotes: state.avoidNotes || undefined,
+          productTier: state.productTier,
           shipping:
             state.productTier === ProductTier.printed_board_cards ? state.shipping : undefined,
           customerEmail: state.customerEmail || undefined,
@@ -170,198 +426,331 @@ export function MysteryNightWizard() {
   };
 
   return (
-    <div className="space-y-8">
-      <StepTabs steps={STEP_TITLES} step={step} onSelect={setStep} />
+    <div className="builder-surface space-y-6">
+      <StepTabs steps={steps} step={currentStep} />
 
-      <div className="glass-panel rounded-[2rem] p-6 sm:p-8">
-        {step === 0 ? (
-          <RecipientOccasionFields
-            recipientName={state.recipientName}
-            buyerName={state.buyerName}
-            occasion={state.occasion}
-            tone={state.tone}
-            relationship={state.relationship}
-            onRecipientNameChange={(value) => updateState("recipientName", value)}
-            onBuyerNameChange={(value) => updateState("buyerName", value)}
-            onOccasionChange={(value) => updateState("occasion", value)}
-            onToneChange={(value) => updateState("tone", value)}
-            onRelationshipChange={(value) => updateState("relationship", value)}
-          />
-        ) : null}
+      {currentStep === 0 ? (
+        <QuestionCard
+          eyebrow="Step 1"
+          title="Who is this mystery for?"
+          description="Start with the basics, then we'll turn it into a playful case file."
+        >
+          <div className="grid gap-4 md:grid-cols-2">
+            <label className={SOFT_PANEL_CLASS}>
+              <FieldLabel title="Recipient name" />
+              <input
+                value={state.recipientName}
+                onChange={(event) => updateState("recipientName", event.target.value)}
+                className={`${BUILDER_INPUT_CLASS} mt-4`}
+                placeholder="Taylor"
+              />
+            </label>
 
-        {step === 1 ? (
-          <div className="space-y-8">
-            <div>
-              <h3 className="heading-display text-3xl font-semibold">Build the case file</h3>
-              <p className="mt-2 text-sm text-stone-600">
-                Add suspects, locations, and clues pulled from the recipient’s real life.
-              </p>
-            </div>
-            <div className="space-y-4">
-              <h4 className="text-sm font-semibold uppercase tracking-[0.16em] text-stone-500">
-                Suspects or featured characters
-              </h4>
-              {state.suspects.map((suspect, index) => (
-                <div key={`${suspect.name}-${index}`} className="grid gap-3 md:grid-cols-2">
-                  <input
-                    value={suspect.name}
-                    onChange={(event) => updateSuspect(index, "name", event.target.value)}
-                    className="rounded-2xl border border-[var(--line)] bg-white px-4 py-3 outline-none"
-                    placeholder={MYSTERY_NIGHT_SUSPECT_PLACEHOLDERS[index] || "Suspect"}
-                  />
-                  <input
-                    value={suspect.role}
-                    onChange={(event) => updateSuspect(index, "role", event.target.value)}
-                    className="rounded-2xl border border-[var(--line)] bg-white px-4 py-3 outline-none"
-                    placeholder="Optional role, habit, or motive"
-                  />
-                </div>
-              ))}
-            </div>
-            {(
-              [
-                ["locations", "Locations", MYSTERY_NIGHT_LOCATION_PLACEHOLDERS],
-                ["clues", "Clues", MYSTERY_NIGHT_CLUE_PLACEHOLDERS],
-              ] as const
-            ).map(([key, label, placeholders]) => (
-              <div key={key} className="space-y-4">
-                <h4 className="text-sm font-semibold uppercase tracking-[0.16em] text-stone-500">
-                  {label}
-                </h4>
-                {state[key].map((item, index) => (
-                  <div
-                    key={`${item.name}-${index}`}
-                    className="grid gap-3 md:grid-cols-[1.5fr,0.9fr,1.3fr]"
-                  >
-                    <input
-                      value={item.name}
-                      onChange={(event) =>
-                        updateCollection(key, index, "name", event.target.value)
-                      }
-                      className="rounded-2xl border border-[var(--line)] bg-white px-4 py-3 outline-none"
-                      placeholder={placeholders[index] || label}
-                    />
-                    <select
-                      value={item.category}
-                      onChange={(event) =>
-                        updateCollection(key, index, "category", event.target.value)
-                      }
-                      className="rounded-2xl border border-[var(--line)] bg-white px-4 py-3 outline-none"
-                    >
-                      {ITEM_CATEGORIES.map((option) => (
-                        <option key={option.value} value={option.value}>
-                          {option.label}
-                        </option>
-                      ))}
-                    </select>
-                    <input
-                      value={item.note}
-                      onChange={(event) =>
-                        updateCollection(key, index, "note", event.target.value)
-                      }
-                      className="rounded-2xl border border-[var(--line)] bg-white px-4 py-3 outline-none"
-                      placeholder="Optional context"
-                    />
-                  </div>
-                ))}
-              </div>
-            ))}
-            <label className="space-y-2">
-              <span className="text-sm font-semibold text-stone-700">Optional reveal twist</span>
-              <textarea
-                value={state.revealTwist}
-                onChange={(event) => updateState("revealTwist", event.target.value)}
-                className="min-h-24 w-full rounded-2xl border border-[var(--line)] bg-white px-4 py-3 outline-none"
-                placeholder="A dramatic final reveal, callback, or group punchline"
+            <label className={SOFT_PANEL_CLASS}>
+              <FieldLabel title="Your name" />
+              <input
+                value={state.buyerName}
+                onChange={(event) => updateState("buyerName", event.target.value)}
+                className={`${BUILDER_INPUT_CLASS} mt-4`}
+                placeholder="Jamie"
               />
             </label>
           </div>
-        ) : null}
 
-        {step === 2 ? (
-          <StyleFields
-            visualStyle={state.visualStyle}
-            colorMood={state.colorMood}
-            titleOverride={state.titleOverride}
-            subtitleOverride={state.subtitleOverride}
-            avoidNotes={state.avoidNotes}
-            onVisualStyleChange={(value) => updateState("visualStyle", value)}
-            onColorMoodChange={(value) => updateState("colorMood", value)}
-            onTitleOverrideChange={(value) => updateState("titleOverride", value)}
-            onSubtitleOverrideChange={(value) => updateState("subtitleOverride", value)}
-            onAvoidNotesChange={(value) => updateState("avoidNotes", value)}
+          <div className="grid gap-4 md:grid-cols-3">
+            <label className={SOFT_PANEL_CLASS}>
+              <FieldLabel title="Occasion" />
+              <select
+                value={state.occasion}
+                onChange={(event) =>
+                  updateState("occasion", event.target.value as (typeof OCCASION_OPTIONS)[number])
+                }
+                className={`${BUILDER_SELECT_CLASS} mt-4`}
+              >
+                {OCCASION_OPTIONS.map((option) => (
+                  <option key={option} value={option}>
+                    {option.replace(/\b\w/g, (character) => character.toUpperCase())}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <label className={SOFT_PANEL_CLASS}>
+              <FieldLabel title="Relationship" />
+              <select
+                value={state.relationship}
+                onChange={(event) =>
+                  updateState(
+                    "relationship",
+                    event.target.value as (typeof RELATIONSHIP_OPTIONS)[number],
+                  )
+                }
+                className={`${BUILDER_SELECT_CLASS} mt-4`}
+              >
+                {RELATIONSHIP_OPTIONS.map((option) => (
+                  <option key={option} value={option}>
+                    {option.replace(/\b\w/g, (character) => character.toUpperCase())}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <label className={SOFT_PANEL_CLASS}>
+              <FieldLabel title="Tone" />
+              <select
+                value={state.tone}
+                onChange={(event) =>
+                  updateState("tone", event.target.value as (typeof TONE_OPTIONS)[number])
+                }
+                className={`${BUILDER_SELECT_CLASS} mt-4`}
+              >
+                {TONE_OPTIONS.map((option) => (
+                  <option key={option} value={option}>
+                    {option.replace(/\b\w/g, (character) => character.toUpperCase())}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
+        </QuestionCard>
+      ) : null}
+
+      {currentStep === 1 ? (
+        <QuestionCard
+          eyebrow="Step 2"
+          title="Pick the cast"
+          description="Choose the people-types that belong in this mystery. Then swap in the real names if you want."
+        >
+          <MultiChoiceGrid
+            options={SUSPECT_OPTIONS}
+            selected={state.selectedSuspects}
+            onToggle={(id) => updateState("selectedSuspects", toggleSelection(state.selectedSuspects, id))}
+            columnsClass="sm:grid-cols-2 xl:grid-cols-2"
           />
-        ) : null}
 
-        {step === 3 ? (
-          <div className="space-y-6">
-            <ProductTierCards
-              template={template}
-              selectedTier={state.productTier}
-              onSelect={(tier) => updateState("productTier", tier)}
-            />
-            <EmailField
-              value={state.customerEmail}
-              onChange={(value) => updateState("customerEmail", value)}
-            />
-            {state.productTier === ProductTier.printed_board_cards ? (
-              <ShippingFields
-                shipping={state.shipping}
-                onChange={(next) => updateState("shipping", next)}
-              />
-            ) : null}
-          </div>
-        ) : null}
+          {state.selectedSuspects.length > 0 ? (
+            <div className="space-y-4">
+              {state.selectedSuspects.map((id) => {
+                const option = SUSPECT_OPTIONS.find((item) => item.id === id)!;
 
-        {step === 4 ? (
-          <div className="space-y-5">
-            <h3 className="heading-display text-3xl font-semibold">Ready to generate</h3>
-            <div className="rounded-[1.8rem] border border-[var(--line)] bg-white p-5">
-              <div className="grid gap-4 md:grid-cols-2">
-                <div>
-                  <div className="text-sm font-semibold uppercase tracking-[0.18em] text-stone-500">
-                    Recipient
-                  </div>
-                  <div className="mt-2 text-lg font-semibold text-stone-900">
-                    {state.recipientName || "Add a recipient name"}
-                  </div>
-                </div>
-                <div>
-                  <div className="text-sm font-semibold uppercase tracking-[0.18em] text-stone-500">
-                    Case cast
-                  </div>
-                  <div className="mt-2 text-lg font-semibold text-stone-900">
-                    {state.suspects.filter((item) => item.name.trim()).length} suspects
-                  </div>
-                </div>
-              </div>
+                return (
+                  <label key={id} className={SOFT_PANEL_CLASS}>
+                    <FieldLabel
+                      title={option.label}
+                      hint={`${option.hint} Leave blank to use the role name as-is.`}
+                    />
+                    <input
+                      value={state.suspectNames[id] ?? ""}
+                      onChange={(event) => updateMapValue("suspectNames", id, event.target.value)}
+                      className={`${BUILDER_INPUT_CLASS} mt-4`}
+                      placeholder="Add the real person's name"
+                    />
+                  </label>
+                );
+              })}
             </div>
-            <button
-              type="button"
-              onClick={handleGenerate}
-              disabled={isSubmitting}
-              className="rounded-full bg-[var(--brand)] px-6 py-3 text-sm font-semibold text-white shadow-[0_14px_30px_rgba(202,111,75,0.25)] disabled:opacity-70"
-            >
-              {isSubmitting ? "Generating preview..." : "Generate my preview"}
-            </button>
-            <TurnstileWidget
-              value={state.turnstileToken}
-              onChange={(token) => updateState("turnstileToken", token)}
+          ) : null}
+        </QuestionCard>
+      ) : null}
+
+      {currentStep === 2 ? (
+        <QuestionCard
+          eyebrow="Step 3"
+          title="Pick the scenes and clues"
+          description="This is the fun part. Choose the places and evidence types that match the group's lore."
+        >
+          <div className="space-y-4">
+            <FieldLabel title="Scenes" hint="Pick at least 3." />
+            <MultiChoiceGrid
+              options={SCENE_OPTIONS}
+              selected={state.selectedScenes}
+              onToggle={(id) => updateState("selectedScenes", toggleSelection(state.selectedScenes, id))}
+              columnsClass="sm:grid-cols-2 xl:grid-cols-3"
             />
-            {error ? (
-              <div className="rounded-2xl bg-rose-50 px-4 py-3 text-sm text-rose-700">
-                {error}
-              </div>
-            ) : null}
           </div>
-        ) : null}
-      </div>
+
+          {state.selectedScenes.length > 0 ? (
+            <div className="space-y-4">
+              {state.selectedScenes.map((id) => {
+                const option = SCENE_OPTIONS.find((item) => item.id === id)!;
+
+                return (
+                  <label key={id} className={SOFT_PANEL_CLASS}>
+                    <FieldLabel
+                      title={option.label}
+                      hint={`${option.hint} Leave blank to use the scene label.`}
+                    />
+                    <input
+                      value={state.sceneNames[id] ?? ""}
+                      onChange={(event) => updateMapValue("sceneNames", id, event.target.value)}
+                      className={`${BUILDER_INPUT_CLASS} mt-4`}
+                      placeholder="Example: Lake cabin or Grandma's kitchen"
+                    />
+                  </label>
+                );
+              })}
+            </div>
+          ) : null}
+
+          <div className="space-y-4">
+            <FieldLabel title="Evidence" hint="Pick at least 4." />
+            <MultiChoiceGrid
+              options={CLUE_OPTIONS}
+              selected={state.selectedClues}
+              onToggle={(id) => updateState("selectedClues", toggleSelection(state.selectedClues, id))}
+              columnsClass="sm:grid-cols-2 xl:grid-cols-2"
+            />
+          </div>
+
+          {state.selectedClues.length > 0 ? (
+            <div className="space-y-4">
+              {state.selectedClues.map((id) => {
+                const option = CLUE_OPTIONS.find((item) => item.id === id)!;
+
+                return (
+                  <label key={id} className={SOFT_PANEL_CLASS}>
+                    <FieldLabel
+                      title={option.label}
+                      hint={`${option.hint} Leave blank to use the clue label.`}
+                    />
+                    <input
+                      value={state.clueNames[id] ?? ""}
+                      onChange={(event) => updateMapValue("clueNames", id, event.target.value)}
+                      className={`${BUILDER_INPUT_CLASS} mt-4`}
+                      placeholder="Example: glittery receipt or cursed playlist"
+                    />
+                  </label>
+                );
+              })}
+            </div>
+          ) : null}
+
+          <div className="space-y-4">
+            <FieldLabel title="Reveal style" />
+            <ChoiceGrid
+              value={state.revealTwist}
+              options={TWIST_OPTIONS}
+              onSelect={(value) => updateState("revealTwist", value)}
+              columnsClass="sm:grid-cols-2"
+            />
+          </div>
+        </QuestionCard>
+      ) : null}
+
+      {currentStep === 3 ? (
+        <QuestionCard
+          eyebrow="Step 4"
+          title="Pick the final look"
+          description="Choose the visual direction, then tell us where to send the proof."
+        >
+          <div className="space-y-4">
+            <FieldLabel title="Visual style" />
+            <ChoiceGrid
+              value={state.visualStyle}
+              options={VISUAL_STYLE_OPTIONS}
+              columnsClass="sm:grid-cols-2 xl:grid-cols-4"
+              onSelect={(value) => updateState("visualStyle", value)}
+            />
+          </div>
+
+          <div className="space-y-4">
+            <FieldLabel title="Color mood" />
+            <ChoiceGrid
+              value={state.colorMood}
+              options={COLOR_MOOD_OPTIONS}
+              columnsClass="sm:grid-cols-2 xl:grid-cols-3"
+              onSelect={(value) => updateState("colorMood", value)}
+            />
+          </div>
+
+          <ProductTierCards
+            template={template}
+            selectedTier={state.productTier}
+            onSelect={(tier) => updateState("productTier", tier)}
+            physicalCheckoutEnabled={physicalCheckoutEnabled}
+            physicalDisabledMessage={physicalDisabledMessage}
+          />
+
+          <EmailField
+            value={state.customerEmail}
+            onChange={(value) => updateState("customerEmail", value)}
+          />
+
+          {state.productTier === ProductTier.printed_board_cards ? (
+            <ShippingFields
+              shipping={state.shipping}
+              onChange={(next) => updateState("shipping", next)}
+            />
+          ) : null}
+        </QuestionCard>
+      ) : null}
+
+      {currentStep === reviewStep ? (
+        <QuestionCard
+          eyebrow="Step 5"
+          title="Generate the proof"
+          description="We'll draft the mystery board and cards now. You can still edit the proof before checkout."
+        >
+          <div className="grid gap-3 md:grid-cols-2">
+            <div className="spec-line">
+              <strong>Recipient:</strong> {state.recipientName}
+            </div>
+            <div className="spec-line">
+              <strong>Occasion:</strong> {state.occasion}
+            </div>
+            <div className="spec-line">
+              <strong>Cast:</strong> {suspects.length}
+            </div>
+            <div className="spec-line">
+              <strong>Scenes:</strong> {locations.length}
+            </div>
+            <div className="spec-line">
+              <strong>Evidence:</strong> {clues.length}
+            </div>
+            <div className="spec-line">
+              <strong>Format:</strong>{" "}
+              {template.tiers.find((tier) => tier.tier === state.productTier)?.label}
+            </div>
+          </div>
+
+          <button
+            type="button"
+            onClick={handleGenerate}
+            disabled={
+              isSubmitting || state.selectedSuspects.length < 4 || state.selectedScenes.length < 3 || state.selectedClues.length < 4
+            }
+            className="cta-pill disabled:cursor-not-allowed disabled:opacity-45"
+          >
+            {isSubmitting ? "Generating preview..." : "Generate my preview"}
+          </button>
+
+          <TurnstileWidget
+            value={state.turnstileToken}
+            onChange={(token) => updateState("turnstileToken", token)}
+          />
+
+          {state.selectedSuspects.length < 4 ||
+          state.selectedScenes.length < 3 ||
+          state.selectedClues.length < 4 ? (
+            <div className="rounded-2xl bg-amber-50 px-4 py-3 text-sm text-amber-800">
+              Pick at least 4 cast roles, 3 scenes, and 4 clues to generate the proof.
+            </div>
+          ) : null}
+
+          {error ? (
+            <div className="rounded-2xl bg-rose-50 px-4 py-3 text-sm text-rose-700">
+              {error}
+            </div>
+          ) : null}
+        </QuestionCard>
+      ) : null}
 
       <WizardFooter
-        step={step}
-        totalSteps={STEP_TITLES.length}
-        onPrevious={() => setStep((current) => Math.max(current - 1, 0))}
-        onNext={() => setStep((current) => Math.min(current + 1, STEP_TITLES.length - 1))}
+        step={currentStep}
+        totalSteps={steps.length}
+        disableNext={!canContinue}
+        onPrevious={() => setStep(Math.max(currentStep - 1, 0))}
+        onNext={() => setStep(Math.min(currentStep + 1, steps.length - 1))}
       />
     </div>
   );

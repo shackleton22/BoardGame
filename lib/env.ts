@@ -53,6 +53,14 @@ export function getOpenAIImageModel() {
   return getOptionalEnv("OPENAI_IMAGE_MODEL") ?? "gpt-image-2";
 }
 
+export function getOpenAIImageSize() {
+  return getOptionalEnv("OPENAI_IMAGE_SIZE") ?? "2048x2048";
+}
+
+export function getOpenAIImageQuality() {
+  return getOptionalEnv("OPENAI_IMAGE_QUALITY") ?? "high";
+}
+
 export function getTgcPaymentMethod() {
   return getOptionalEnv("TGC_PAYMENT_METHOD") ?? "shopcredit";
 }

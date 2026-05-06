@@ -3,6 +3,7 @@ import { Prisma, ProductTier } from "@prisma/client";
 import { db } from "@/lib/db";
 import { getShippingQuotes } from "@/lib/fulfillment";
 import { buildFulfillmentPlan } from "@/lib/fulfillment/plan";
+import { assertProductTierLaunchEnabled } from "@/lib/launch/config";
 import { recordOperationalEvent } from "@/lib/operations";
 import type { TemplateSlug } from "@/lib/templates/types";
 import { shippingSchema } from "@/lib/validation/project";
@@ -19,6 +20,8 @@ export async function createShippingQuotesForProject(projectId: string) {
   if (project.productTier !== ProductTier.printed_board_cards) {
     throw new Error("Shipping quotes are only required for boxed game orders.");
   }
+
+  assertProductTierLaunchEnabled(project.productTier);
 
   const shipping = shippingSchema.parse(project.shippingJson);
   const input = project.inputJson as Prisma.JsonObject;

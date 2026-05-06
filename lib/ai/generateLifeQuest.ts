@@ -33,7 +33,7 @@ export async function generateLifeQuestAiContent(
       source: "ai",
     };
   } catch (error) {
-    await captureServerError(error, { template: "life-quest", stage: "generate" });
+    await captureServerError(error, { template: "milestone-trail", stage: "generate" });
     return { output: buildFallbackLifeQuest(input), source: "fallback" };
   }
 }

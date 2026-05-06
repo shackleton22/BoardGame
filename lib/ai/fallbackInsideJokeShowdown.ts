@@ -15,23 +15,34 @@ const TILE_TYPES: ProjectOutputPayload["tiles"][number]["type"][] = [
   "wildcard",
 ];
 
+function sentenceFragment(value: string) {
+  return value.trim().replace(/[.!?]+$/g, "").toLowerCase();
+}
+
 export function buildFallbackInsideJokeShowdown(
   input: InsideJokeShowdownWizardInput,
 ): ProjectOutputPayload {
   const references = [
     ...input.insideJokes.map((item: InsideJokeShowdownWizardInput["insideJokes"][number]) => ({
       name: item.name,
-      note: item.note ?? "A recurring bit that instantly gets the whole table laughing.",
+      note:
+        item.whyItMatters ||
+        item.factOne ||
+        item.note ||
+        "A recurring topic the whole table should know cold.",
     })),
     ...input.rapidChallenges.map(
       (item: InsideJokeShowdownWizardInput["rapidChallenges"][number]) => ({
       name: item.name,
-      note: item.note ?? "A quick challenge that deserves a dramatic reenactment.",
+      note:
+        item.prompt ||
+        item.note ||
+        "A bonus prompt that can swing the score at the last second.",
       }),
     ),
     ...input.catchphrases.map((phrase: string) => ({
       name: phrase,
-      note: "A line everyone can hear in exactly the right voice.",
+      note: "A signature answer, quote, or callback everyone should recognize.",
     })),
   ];
 
@@ -49,35 +60,35 @@ export function buildFallbackInsideJokeShowdown(
 
   return {
     title: sanitizePlainText(
-      input.titleOverride || `${input.recipientName}'s Inside Joke Showdown`,
+      input.titleOverride || `${input.recipientName}'s Trivia Trek`,
       80,
     ),
     subtitle: sanitizePlainText(
       input.subtitleOverride ||
-        "A party-night keepsake packed with callbacks, challenges, and signature lines from the group.",
+        "A personalized trivia board packed with stories, categories, bonus rounds, and signature answers.",
       140,
     ),
     themeSummary: sanitizePlainText(
-      `A ${input.visualStyle}, ${input.colorMood} party board built from the friend group's best bits, fastest challenges, and most repeated lines.`,
+      `A ${input.visualStyle}, ${input.colorMood} trivia board built from the group's favorite categories, answer anchors, callbacks, and bonus rounds.`,
       220,
     ),
-    centerKicker: "Fast laughs. Real memories. One final bragging title.",
+    centerKicker: "Question. Guess. Celebrate.",
     boardSections: [
       {
         label: "Warm-Up",
-        description: "Call up the classic bits and set the energy for the night.",
+        description: "Start with the stories, categories, and memory hooks everyone recognizes.",
       },
       {
-        label: "Callout Round",
-        description: "Test the table's recall with catchphrases, chaos, and mini dares.",
+        label: "Memory Lane",
+        description: "Test the table's recall with personal trivia, callback details, and shared lore.",
       },
       {
-        label: "Double Down",
-        description: "Raise the stakes with remixes, rivalries, and dramatic retellings.",
+        label: "Bonus Round",
+        description: "Raise the stakes with tie-breakers, close calls, and risk-reward prompts.",
       },
       {
-        label: "Final Flex",
-        description: "Close the showdown with the loudest laughs and the biggest score.",
+        label: "Final Question",
+        description: "Close the game with the toughest prompt and the biggest score swing.",
       },
     ],
     tiles: padded.map((item, index) => ({
@@ -86,18 +97,20 @@ export function buildFallbackInsideJokeShowdown(
       caption: sanitizePlainText(item.note, 90),
       points: [1, -1, 3, 0, 2, 2, 4, 1][index % 8],
     })),
-    deckPrimaryLabel: "Callout Cards",
-    deckSecondaryLabel: "Challenge Cards",
+    deckPrimaryLabel: "Question Cards",
+    deckSecondaryLabel: "Bonus Cards",
     deckPrimary: Array.from({ length: 24 }, (_, index) => {
-      const phrase = input.catchphrases[index % input.catchphrases.length];
+      const topic = input.insideJokes[index % input.insideJokes.length];
+      const clueLine =
+        topic.factOne || topic.factTwo || topic.factThree || topic.note || "shared lore";
       return {
-        title: sanitizePlainText(`Callout: ${phrase}`, 40),
+        title: sanitizePlainText(`Question: ${topic.name}`, 40),
         body: sanitizePlainText(
-          `Tell the table when this line appears, who says it best, or how it became part of the group's vocabulary.`,
+          `Ask the table to connect ${topic.name.toLowerCase()} to ${sentenceFragment(clueLine)} and explain why it belongs in ${input.recipientName}'s trivia set.`,
           180,
         ),
         effect: sanitizePlainText(
-          index % 4 === 0 ? "Gain 2 laugh points." : "Move forward 1 space after the vote.",
+          index % 4 === 0 ? "Gain 2 score points for a perfect answer." : "Move forward 1 space after the guess.",
           80,
         ),
       };
@@ -105,36 +118,41 @@ export function buildFallbackInsideJokeShowdown(
     deckSecondary: Array.from({ length: 24 }, (_, index) => {
       const challenge = input.rapidChallenges[index % input.rapidChallenges.length];
       return {
-        title: sanitizePlainText(`Challenge: ${challenge.name}`, 40),
+        title: sanitizePlainText(`Bonus: ${challenge.name}`, 40),
         body: sanitizePlainText(
-          challenge.note ||
-            "Act it out, rank it, retell it, or nominate the person most likely to start it.",
+          challenge.prompt ||
+            challenge.note ||
+            "Use this as a tie-breaker, speed round, or bonus point challenge for the table.",
           180,
         ),
         effect: sanitizePlainText(
-          index % 3 === 0 ? "Take an extra roll if the table laughs." : "Gain 1 point if everyone joins in.",
+          challenge.difficulty === "hard"
+            ? "Gain 2 bonus points if the table agrees."
+            : index % 3 === 0
+              ? "Take an extra roll if the table agrees."
+              : "Gain 1 bonus point for the closest answer.",
           80,
         ),
       };
     }),
     rules: {
       objective:
-        "Collect laugh points by landing on callback spaces, winning mini challenges, and completing the final showdown lap.",
+        "Collect score points by answering personalized trivia prompts, winning bonus rounds, and completing the final question lap.",
       setup: [
-        "Place the board in the center and shuffle Callout Cards and Challenge Cards into separate decks.",
+        "Place the board in the center and shuffle Question Cards and Bonus Cards into separate decks.",
         "Each player chooses any household token and starts on the first space.",
-        "Keep coins, buttons, or notes nearby to track laugh points.",
+        "Keep coins, buttons, or notes nearby to track score points.",
       ],
       turn: [
         "Roll one six-sided die and move forward the matching number of spaces.",
-        "Resolve the landed callback, challenge, or bonus space before ending your turn.",
+        "Resolve the landed trivia, bonus, or challenge space before ending your turn.",
         "Whenever a card is drawn, read it aloud and let the table decide who earned the points.",
       ],
       winning:
-        "Once everyone completes the final lap, the player with the most laugh points wins the showdown and the closing toast.",
+        "Once everyone completes the final lap, the player with the most score points wins the trivia trek and the closing bragging rights.",
     },
     artPrompt: sanitizePlainText(
-      `Premium party-board decorative artwork with playful ribbons, paper-cut shapes, lively confetti arcs, ${input.visualStyle} styling, ${input.colorMood} palette, and no text inside the image.`,
+      `Premium trivia-board decorative artwork with playful paper-cut shapes, category markers, confident editorial layout cues, ${input.visualStyle} styling, ${input.colorMood} palette, and no text inside the image.`,
       400,
     ),
     boardStyle: "party",

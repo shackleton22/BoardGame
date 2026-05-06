@@ -1,12 +1,14 @@
 import type { ProductTier, ProjectItemCategory } from "@prisma/client";
-import type { ZodType } from "zod";
+import type { ZodType, ZodTypeDef } from "zod";
 
 import type { ProjectOutputPayload } from "@/lib/validation/project";
 
 export type TemplateSlug =
-  | "life-quest"
-  | "mystery-night"
-  | "inside-joke-showdown";
+  | "home-turf"
+  | "milestone-trail"
+  | "face-card"
+  | "case-file"
+  | "trivia-trek";
 
 export type BoardRenderArgs = {
   output: ProjectOutputPayload;
@@ -74,8 +76,9 @@ export type TemplateDefinition<Input> = {
   };
   bomVersion: string;
   componentSetSummary: string[];
+  packoutChecklist: string[];
   vendorComponents: TemplateVendorComponent[];
-  schema: ZodType<Input>;
+  schema: ZodType<Input, ZodTypeDef, unknown>;
   parseInput: (raw: unknown) => Input;
   buildProjectItems: (input: Input) => TemplateProjectItem[];
   generateContent: (

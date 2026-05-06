@@ -8,9 +8,20 @@ import {
 
 import { syncCatalogData } from "@/lib/catalog/sync";
 import { db } from "@/lib/db";
+import { generateBoardArtwork } from "@/lib/ai/generateBoardArtwork";
 import { sendTransactionalEmail } from "@/lib/email";
 import { submitMockFulfillment } from "@/lib/fulfillment/mockProvider";
 import { buildFulfillmentPlan } from "@/lib/fulfillment/plan";
+import {
+  assertProductTierLaunchEnabled,
+  assertTemplateLaunchEnabled,
+} from "@/lib/launch/config";
+import {
+  createLocalPreviewProject,
+  getLocalPreviewProject,
+  regenerateLocalPreviewProject,
+  updateLocalPreviewProjectOutput,
+} from "@/lib/local-preview-store";
 import { captureServerError } from "@/lib/monitoring";
 import { recordOperationalEvent } from "@/lib/operations";
 import { generateFinalAssets, generatePreviewAssets } from "@/lib/render/assets";
@@ -24,6 +35,10 @@ import {
   projectOutputEditSchema,
   type ProjectCreateInput,
 } from "@/lib/validation/project";
+
+function hasDatabaseUrl() {
+  return Boolean(process.env.DATABASE_URL?.trim());
+}
 
 async function getTemplateRecord(slug: TemplateSlug) {
   await syncCatalogData();
@@ -40,7 +55,30 @@ async function getTemplateRecord(slug: TemplateSlug) {
 
 export async function createProject(rawInput: unknown) {
   const input = projectCreateSchema.parse(rawInput) as ProjectCreateInput;
+  assertTemplateLaunchEnabled(input.templateSlug);
+  assertProductTierLaunchEnabled(input.productTier);
+
   const template = getTemplateDefinition(input.templateSlug);
+
+  if (!hasDatabaseUrl()) {
+    const { output, source } = await template.generateContent(input as never);
+    const localProject = await createLocalPreviewProject({ input, output, source });
+
+    if (output.artPrompt) {
+      await generateBoardArtwork({
+        projectId: localProject.id,
+        prompt: output.artPrompt,
+        templateSlug: input.templateSlug,
+        recipientName: input.recipientName,
+        occasion: input.occasion,
+        output,
+        inputJson: input,
+      });
+    }
+
+    return localProject;
+  }
+
   const templateRecord = await getTemplateRecord(input.templateSlug);
 
   const project = await db.project.create({
@@ -89,6 +127,7 @@ export async function createProject(rawInput: unknown) {
       occasion: updatedProject.occasion,
       visualStyle: updatedProject.visualStyle,
       colorMood: updatedProject.colorMood,
+      inputJson: updatedProject.inputJson,
       outputJson: updatedProject.outputJson,
     });
 
@@ -144,6 +183,10 @@ export async function createProject(rawInput: unknown) {
 }
 
 export async function getProjectById(projectId: string) {
+  if (!hasDatabaseUrl()) {
+    return getLocalPreviewProject(projectId);
+  }
+
   return db.project.findUnique({
     where: { id: projectId },
     include: {
@@ -169,12 +212,31 @@ export async function getProjectById(projectId: string) {
 }
 
 export async function updateProjectOutput(projectId: string, rawInput: unknown) {
+  if (!hasDatabaseUrl()) {
+    const nextOutput = projectOutputEditSchema.parse(rawInput);
+    return updateLocalPreviewProjectOutput(projectId, nextOutput);
+  }
+
   const project = await db.project.findUnique({
     where: { id: projectId },
+    include: {
+      orders: {
+        where: {
+          status: "paid",
+        },
+      },
+    },
   });
 
   if (!project) {
     throw new Error("Project not found.");
+  }
+
+  if (
+    project.orders.length > 0 ||
+    ["paid", "asset_ready", "fulfilled"].includes(project.status)
+  ) {
+    throw new Error("This proof is locked after checkout.");
   }
 
   const nextOutput = projectOutputEditSchema.parse(rawInput);
@@ -201,6 +263,7 @@ export async function updateProjectOutput(projectId: string, rawInput: unknown) 
     occasion: updated.occasion,
     visualStyle: updated.visualStyle,
     colorMood: updated.colorMood,
+    inputJson: updated.inputJson,
     outputJson: updated.outputJson,
   });
 
@@ -215,12 +278,44 @@ export async function updateProjectOutput(projectId: string, rawInput: unknown) 
 }
 
 export async function regenerateProjectOutput(projectId: string) {
+  if (!hasDatabaseUrl()) {
+    const project = await getLocalPreviewProject(projectId);
+
+    if (!project) {
+      throw new Error("Project not found.");
+    }
+
+    if (project.previewRegenerationCount >= 1) {
+      throw new Error("This preview has already been regenerated once.");
+    }
+
+    const template = getTemplateDefinition(project.templateSlug as TemplateSlug);
+    const input = template.parseInput(project.inputJson);
+    const { output, source } = await template.generateContent(input as never);
+
+    return regenerateLocalPreviewProject({ projectId, output, source });
+  }
+
   const project = await db.project.findUnique({
     where: { id: projectId },
+    include: {
+      orders: {
+        where: {
+          status: "paid",
+        },
+      },
+    },
   });
 
   if (!project) {
     throw new Error("Project not found.");
+  }
+
+  if (
+    project.orders.length > 0 ||
+    ["paid", "asset_ready", "fulfilled"].includes(project.status)
+  ) {
+    throw new Error("This proof is locked after checkout.");
   }
 
   if (project.previewRegenerationCount >= 1) {
@@ -253,7 +348,9 @@ export async function regenerateProjectOutput(projectId: string) {
     occasion: updated.occasion,
     visualStyle: updated.visualStyle,
     colorMood: updated.colorMood,
+    inputJson: updated.inputJson,
     outputJson: updated.outputJson,
+    forceRegenerateArtwork: true,
   });
 
   await recordOperationalEvent({

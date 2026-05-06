@@ -10,7 +10,7 @@ That means:
 
 - customers customize only from approved templates
 - each template has a controlled component set
-- each physical template maps to a preconfigured boxed product at the manufacturer
+- each physical template maps to a preconfigured vendor component set at the manufacturer
 - personalization changes the printed assets and copy, not the underlying supply chain shape
 
 ## Launch provider
@@ -38,17 +38,24 @@ Why:
 
 ## What must exist outside the repo
 
-The code assumes you have already configured one boxed bundle SKU for each launch template:
+The code assumes you have already configured the printed parts and stock pieces SKUs for each launch template:
 
-- `Life Quest Board`
-- `Mystery Night`
-- `Inside Joke Showdown`
+- `Milestone Trail`
+- `Home Turf`
+- `Face Card`
+- `Case File`
+- `Trivia Trek`
 
-Those SKUs are injected with:
+Each template needs live SKUs for:
 
-- `TGC_TEMPLATE_LIFE_QUEST_SKU`
-- `TGC_TEMPLATE_MYSTERY_NIGHT_SKU`
-- `TGC_TEMPLATE_INSIDE_JOKE_SHOWDOWN_SKU`
+- board
+- primary deck
+- secondary deck
+- rulebook
+- stock pieces kit
+- box
+
+Those SKUs are injected through the `TGC_HOME_TURF_*`, `TGC_MILESTONE_TRAIL_*`, `TGC_FACE_CARD_*`, `TGC_CASE_FILE_*`, and `TGC_TRIVIA_TREK_*` env groups.
 
 ## BOM strategy
 
@@ -56,9 +63,11 @@ The launch BOM is controlled and non-infringing.
 
 Examples:
 
-- `Life Quest Board`: board, 2 decks, rules, pawns, die, score tokens, box
-- `Mystery Night`: evidence board, 2 decks, rules, tokens, die, box
-- `Inside Joke Showdown`: party board, 2 decks, rules, markers/tokens, die, box
+- `Milestone Trail`: folding board, 2 decks, rulebook, stock pawns, die, score tokens, box
+- `Home Turf`: neighborhood-map board, 2 decks, rulebook, stock movers, die, turf/score tokens, box
+- `Face Card`: identity board, 2 decks, rulebook, stock markers, guess tokens, die, box
+- `Case File`: evidence board, 2 decks, detective booklet, suspect markers, investigation tokens, die, box
+- `Trivia Trek`: score-track board, 2 decks, rulebook, stock movers, die, score markers, box
 
 These are represented in the template registry and catalog sync layer. They are not open-ended arbitrary kits.
 
@@ -76,6 +85,7 @@ Physical orders:
 - app gets live shipping quotes from The Game Crafter
 - customer pays in Stripe for product + shipping + tax
 - webhook generates final files and fulfillment manifest
+- fulfillment manifest includes the BOM version and packout checklist
 - app submits the order to The Game Crafter
 - scheduled sync updates shipment state later
 
@@ -92,7 +102,7 @@ Physical orders:
 ## What is still operationally dependent
 
 - live The Game Crafter credentials
-- real template bundle SKUs
+- real per-template component SKUs
 - verified product configuration at the vendor
 - production shipping cost and SLA validation
 - at least one successful internal shipment per template

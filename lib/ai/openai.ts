@@ -92,3 +92,65 @@ export async function requestStructuredJson(args: {
 
   return JSON.parse(text) as unknown;
 }
+
+export async function requestStructuredJsonWithImages(args: {
+  systemPrompt: string;
+  userPrompt: string;
+  images: Array<{ mimeType: string; data: Buffer }>;
+  schemaName: string;
+  schema: object;
+}) {
+  const apiKey = getOptionalEnv("OPENAI_API_KEY");
+
+  if (!apiKey) {
+    return null;
+  }
+
+  const response = await fetch("https://api.openai.com/v1/responses", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      model: getOpenAITextModel(),
+      input: [
+        {
+          role: "system",
+          content: [{ type: "input_text", text: args.systemPrompt }],
+        },
+        {
+          role: "user",
+          content: [
+            { type: "input_text", text: args.userPrompt },
+            ...args.images.map((image) => ({
+              type: "input_image",
+              image_url: `data:${image.mimeType};base64,${image.data.toString("base64")}`,
+            })),
+          ],
+        },
+      ],
+      text: {
+        format: {
+          type: "json_schema",
+          name: args.schemaName,
+          strict: true,
+          schema: args.schema,
+        },
+      },
+    }),
+  });
+
+  if (!response.ok) {
+    throw new Error(`OpenAI image review request failed with status ${response.status}`);
+  }
+
+  const payload = (await response.json()) as unknown;
+  const text = extractResponseText(payload);
+
+  if (!text) {
+    throw new Error("OpenAI image review response did not include text output.");
+  }
+
+  return JSON.parse(text) as unknown;
+}

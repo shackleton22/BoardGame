@@ -9,6 +9,11 @@ This document is the operator checklist for getting GameGift Studio from code-co
 - configure `NEXT_PUBLIC_APP_URL` with the production domain
 - configure `REPLIT_APP_STORAGE_BUCKET_ID`
 - add production secrets for Stripe, OpenAI, The Game Crafter, Resend, PostHog, Turnstile, and `CRON_SECRET`
+- set launch controls:
+  - `SOFT_LAUNCH_ENABLED=true`
+  - `LAUNCH_ENABLED_TEMPLATES=home-turf,milestone-trail,face-card,case-file,trivia-trek`
+  - `PHYSICAL_CHECKOUT_ENABLED=true`
+  - `SUPPORT_EMAIL=<founder support mailbox>`
 
 ## 2. Stripe
 
@@ -21,11 +26,14 @@ This document is the operator checklist for getting GameGift Studio from code-co
 ## 3. The Game Crafter
 
 - create/confirm merchant credentials
-- create one preconfigured boxed bundle SKU per launch template
-- fill:
-  - `TGC_TEMPLATE_LIFE_QUEST_SKU`
-  - `TGC_TEMPLATE_MYSTERY_NIGHT_SKU`
-  - `TGC_TEMPLATE_INSIDE_JOKE_SHOWDOWN_SKU`
+- create the per-template component SKU map for each launch template:
+  - board
+  - primary deck
+  - secondary deck
+  - rulebook
+  - stock pieces kit
+  - box
+- fill the `TGC_HOME_TURF_*`, `TGC_MILESTONE_TRAIL_*`, `TGC_FACE_CARD_*`, `TGC_CASE_FILE_*`, and `TGC_TRIVIA_TREK_*` env vars
 - verify quote retrieval from `/api/shipping/quotes`
 - verify vendor submission after Stripe webhook payment
 - verify receipt/shipment sync using `/api/internal/vendor-sync`
@@ -74,7 +82,8 @@ Run this for each template:
 
 Do not open public traffic until all of these are true:
 
-- all 3 templates generate previews successfully
+- `npm run launch:check` passes with zero failures
+- all 5 templates generate previews successfully
 - live shipping quotes return for physical orders
 - Stripe webhook finalization works
 - digital asset downloads work
@@ -82,3 +91,10 @@ Do not open public traffic until all of these are true:
 - shipment polling works
 - support mailbox is monitored
 - legal and policy pages are live on the production domain
+
+## 8. Soft-launch operating rhythm
+
+- monitor the first 10 physical orders manually in `/admin`
+- check support morning, midday, and evening America/Chicago
+- keep `PHYSICAL_CHECKOUT_ENABLED=false` ready as the boxed-product kill switch
+- only widen paid traffic after all five boxed proof orders have shipped and tracking sync is visible through guest lookup

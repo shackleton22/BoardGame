@@ -3,17 +3,65 @@ import { escapeXml } from "@/lib/utils";
 
 import {
   buildBleedGuides,
-  buildLoopPoint,
   PALETTES,
+  truncateBoardText,
 } from "@/lib/render/sharedBoard";
 
-function buildPartyPoint(index: number, total: number) {
-  const point = buildLoopPoint(index, total, 20, -20);
+const COLORS = ["#d95f3d", "#2f7d8a", "#d2a438", "#6f559d", "#4d8b58", "#c05673"];
+
+function polar(cx: number, cy: number, radius: number, angle: number) {
+  const radians = ((angle - 90) * Math.PI) / 180;
   return {
-    x: point.x + Math.sin(index * 1.1) * 34,
-    y: point.y + Math.cos(index * 0.9) * 42,
-    angle: point.angle + 8,
+    x: cx + radius * Math.cos(radians),
+    y: cy + radius * Math.sin(radians),
   };
+}
+
+function sectorPath(cx: number, cy: number, inner: number, outer: number, start: number, end: number) {
+  const p1 = polar(cx, cy, outer, start);
+  const p2 = polar(cx, cy, outer, end);
+  const p3 = polar(cx, cy, inner, end);
+  const p4 = polar(cx, cy, inner, start);
+  const large = end - start > 180 ? 1 : 0;
+
+  return `M ${p1.x} ${p1.y} A ${outer} ${outer} 0 ${large} 1 ${p2.x} ${p2.y} L ${p3.x} ${p3.y} A ${inner} ${inner} 0 ${large} 0 ${p4.x} ${p4.y} Z`;
+}
+
+function triviaSpace(tile: BoardRenderArgs["output"]["tiles"][number], index: number) {
+  const point = polar(800, 810, 570, index * (360 / 32));
+  const color = COLORS[index % COLORS.length];
+
+  return `
+    <g transform="translate(${point.x} ${point.y}) rotate(${index * (360 / 32)})">
+      <rect x="-73" y="-38" width="146" height="76" rx="18" fill="#fffdf4" stroke="#151515" stroke-width="3" />
+      <rect x="-73" y="-38" width="146" height="16" rx="8" fill="${color}" />
+      <text x="0" y="-1" text-anchor="middle" font-size="14" font-weight="900" fill="#171717" font-family="system-ui, sans-serif">${escapeXml(truncateBoardText(tile.name, 16).toUpperCase())}</text>
+      <text x="0" y="21" text-anchor="middle" font-size="10" fill="#41382f" font-family="system-ui, sans-serif">${escapeXml(truncateBoardText(tile.caption, 24))}</text>
+      <text x="0" y="34" text-anchor="middle" font-size="10" font-weight="900" fill="${color}" font-family="system-ui, sans-serif">${tile.points >= 0 ? "+" : ""}${tile.points} SCORE</text>
+    </g>
+  `;
+}
+
+function promptCard({
+  x,
+  y,
+  rotate,
+  label,
+  color,
+}: {
+  x: number;
+  y: number;
+  rotate: number;
+  label: string;
+  color: string;
+}) {
+  return `
+    <g transform="translate(${x} ${y}) rotate(${rotate})">
+      <rect x="-115" y="-72" width="230" height="144" rx="16" fill="${color}" stroke="#fff5d8" stroke-width="8" />
+      <text x="0" y="-5" text-anchor="middle" font-size="22" font-weight="900" fill="#fff5d8" font-family="system-ui, sans-serif">${escapeXml(truncateBoardText(label, 18).toUpperCase())}</text>
+      <text x="0" y="31" text-anchor="middle" font-size="54" font-weight="900" fill="#fff5d8" font-family="Georgia, serif">?</text>
+    </g>
+  `;
 }
 
 export function renderInsideJokeBoardSvg({
@@ -23,84 +71,65 @@ export function renderInsideJokeBoardSvg({
   backgroundArtDataUrl,
 }: BoardRenderArgs) {
   const palette = PALETTES[project.colorMood as keyof typeof PALETTES] ?? PALETTES.bright;
-  const points = output.tiles.map((_, index) => buildPartyPoint(index, output.tiles.length));
-  const path = points
-    .map((point, index) => `${index === 0 ? "M" : "L"} ${point.x} ${point.y}`)
-    .join(" ");
+  const wedges = output.boardSections
+    .slice(0, 6)
+    .map((section, index) => {
+      const start = index * 60;
+      const end = start + 60;
+      const labelPoint = polar(800, 810, 245, start + 30);
 
-  const tiles = output.tiles.map((tile, index) => {
-    const point = points[index];
-    const fillByType: Record<string, string> = {
-      bonus: "#fff4c1",
-      challenge: "#fbe2e5",
-      double_down: "#dff2ff",
-      reward: "#e7f7d8",
-      wildcard: "#f6e6ff",
-      shortcut: "#ffe5d0",
-      rest: "#fffdf7",
-    };
-
-    return `
-      <g transform="translate(${point.x}, ${point.y}) rotate(${point.angle})">
-        <rect x="-78" y="-38" width="156" height="76" rx="30" fill="${fillByType[tile.type] ?? "#ffffff"}" stroke="${palette.line}" stroke-width="2.2" />
-        <text x="0" y="-4" text-anchor="middle" font-size="18" font-weight="700" fill="${palette.line}" font-family="system-ui, sans-serif">${escapeXml(tile.name)}</text>
-        <text x="0" y="18" text-anchor="middle" font-size="11" fill="${palette.line}" font-family="system-ui, sans-serif">${escapeXml(tile.caption)}</text>
-        <text x="0" y="31" text-anchor="middle" font-size="11" font-weight="700" fill="${palette.accent}" font-family="system-ui, sans-serif">${tile.points >= 0 ? "+" : ""}${tile.points} laugh pts</text>
-      </g>
-    `;
-  });
+      return `
+        <path d="${sectorPath(800, 810, 120, 360, start, end)}" fill="${COLORS[index % COLORS.length]}" stroke="#fff8e8" stroke-width="5" />
+        <text x="${labelPoint.x}" y="${labelPoint.y}" text-anchor="middle" font-size="18" font-weight="900" fill="#fffdf4" font-family="system-ui, sans-serif">${escapeXml(truncateBoardText(section.label, 16).toUpperCase())}</text>
+      `;
+    })
+    .join("");
+  const spaces = Array.from({ length: 32 }, (_, index) =>
+    triviaSpace(output.tiles[index % output.tiles.length], index),
+  ).join("");
 
   return `
     <svg width="1600" height="1600" viewBox="0 0 1600 1600" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="${escapeXml(output.title)}">
       <defs>
-        <linearGradient id="partyBg" x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" stop-color="#fff8ef" />
-          <stop offset="100%" stop-color="#ffffff" />
-        </linearGradient>
-        <radialGradient id="partyGlow" cx="50%" cy="46%" r="58%">
-          <stop offset="0%" stop-color="${palette.highlight}" stop-opacity="0.4" />
-          <stop offset="100%" stop-color="${palette.highlight}" stop-opacity="0" />
+        <radialGradient id="triviaBg" cx="50%" cy="45%" r="72%">
+          <stop offset="0%" stop-color="#fff8e6" />
+          <stop offset="100%" stop-color="#ead7b8" />
         </radialGradient>
+        <filter id="triviaShadow" x="-20%" y="-20%" width="140%" height="140%">
+          <feDropShadow dx="0" dy="18" stdDeviation="18" flood-color="#241b12" flood-opacity="0.2" />
+        </filter>
       </defs>
-      <rect width="1600" height="1600" fill="url(#partyBg)" rx="36" />
+      <rect width="1600" height="1600" fill="#263d3f" />
+      <rect x="42" y="42" width="1516" height="1516" rx="34" fill="url(#triviaBg)" stroke="#111" stroke-width="7" />
+      ${buildBleedGuides(mode)}
       ${
         backgroundArtDataUrl
-          ? `<image href="${backgroundArtDataUrl}" x="0" y="0" width="1600" height="1600" preserveAspectRatio="xMidYMid slice" opacity="0.18" />`
+          ? `<image href="${backgroundArtDataUrl}" x="42" y="42" width="1516" height="1516" preserveAspectRatio="xMidYMid slice" opacity="0.35" />`
           : ""
       }
-      ${buildBleedGuides(mode)}
-      <circle cx="800" cy="800" r="580" fill="url(#partyGlow)" />
-      <path d="${path} Z" fill="none" stroke="${palette.accent}" stroke-width="16" stroke-linecap="round" stroke-dasharray="28 18" opacity="0.34" />
-      <path d="${path} Z" fill="none" stroke="${palette.accentTwo}" stroke-width="8" stroke-linecap="round" stroke-dasharray="6 14" opacity="0.7" />
-      <circle cx="240" cy="260" r="48" fill="rgba(255, 211, 105, 0.38)" />
-      <circle cx="1340" cy="1240" r="56" fill="rgba(15, 118, 110, 0.18)" />
-      <circle cx="1310" cy="320" r="32" fill="rgba(249, 115, 22, 0.22)" />
-      <circle cx="290" cy="1290" r="36" fill="rgba(125, 211, 252, 0.32)" />
 
-      <g transform="translate(800 800)">
-        <rect x="-320" y="-230" width="640" height="460" rx="48" fill="rgba(255,255,255,0.88)" stroke="${palette.line}" stroke-width="3" />
-        <text x="0" y="-116" text-anchor="middle" font-size="54" font-weight="700" fill="${palette.line}" font-family="Georgia, serif">${escapeXml(output.title)}</text>
-        <text x="0" y="-70" text-anchor="middle" font-size="24" fill="${palette.accentTwo}" font-family="system-ui, sans-serif">${escapeXml(output.subtitle)}</text>
-        <text x="0" y="-24" text-anchor="middle" font-size="18" fill="${palette.line}" font-family="system-ui, sans-serif">Showdown for ${escapeXml(project.recipientName)} · ${escapeXml(project.occasion)}</text>
-        <text x="0" y="12" text-anchor="middle" font-size="17" fill="${palette.line}" font-family="system-ui, sans-serif">${escapeXml(output.themeSummary)}</text>
-        <text x="0" y="54" text-anchor="middle" font-size="16" fill="${palette.accent}" font-family="system-ui, sans-serif">${escapeXml(output.centerKicker ?? "Fast laughs and bigger bragging rights")}</text>
-        <g transform="translate(0 120)">
-          ${output.boardSections
-            .slice(0, 4)
-            .map(
-              (section, index) => `
-                <g transform="translate(${(index % 2) * 270 - 135}, ${Math.floor(index / 2) * 80 - 6})">
-                  <rect x="-116" y="-18" width="232" height="46" rx="18" fill="rgba(255,255,255,0.96)" stroke="${palette.line}" stroke-width="1.4" />
-                  <text x="0" y="-2" text-anchor="middle" font-size="15" font-weight="700" fill="${palette.accentTwo}" font-family="system-ui, sans-serif">${escapeXml(section.label)}</text>
-                  <text x="0" y="16" text-anchor="middle" font-size="11" fill="${palette.line}" font-family="system-ui, sans-serif">${escapeXml(section.description)}</text>
-                </g>
-              `,
-            )
-            .join("")}
-        </g>
+      <text x="800" y="128" text-anchor="middle" font-size="76" font-weight="900" fill="#171717" font-family="Georgia, serif">${escapeXml(truncateBoardText(output.title, 32).toUpperCase())}</text>
+      <text x="800" y="178" text-anchor="middle" font-size="24" font-weight="800" fill="${palette.accentTwo}" font-family="system-ui, sans-serif">${escapeXml(truncateBoardText(output.subtitle, 76))}</text>
+
+      <g filter="url(#triviaShadow)">
+        <circle cx="800" cy="810" r="640" fill="rgba(255,255,255,0.44)" stroke="#111" stroke-width="4" />
+        <circle cx="800" cy="810" r="410" fill="#fffdf4" stroke="#111" stroke-width="4" />
+        ${wedges}
+        <circle cx="800" cy="810" r="126" fill="#fffdf4" stroke="#111" stroke-width="5" />
+        <text x="800" y="783" text-anchor="middle" font-size="26" font-weight="900" fill="#171717" font-family="system-ui, sans-serif">${escapeXml(project.recipientName.toUpperCase())}</text>
+        <text x="800" y="824" text-anchor="middle" font-size="54" font-weight="900" fill="${palette.accent}" font-family="Georgia, serif">FINAL</text>
+        <text x="800" y="858" text-anchor="middle" font-size="19" font-weight="900" fill="#171717" font-family="system-ui, sans-serif">QUESTION</text>
+        ${spaces}
       </g>
 
-      ${tiles.join("")}
+      ${promptCard({ x: 305, y: 300, rotate: -12, label: output.deckPrimaryLabel, color: "#2f7d8a" })}
+      ${promptCard({ x: 1295, y: 320, rotate: 11, label: output.deckSecondaryLabel, color: "#d95f3d" })}
+      ${promptCard({ x: 320, y: 1302, rotate: 10, label: "Speed Round", color: "#6f559d" })}
+      ${promptCard({ x: 1282, y: 1298, rotate: -8, label: "Bonus Round", color: "#d2a438" })}
+
+      <rect x="548" y="1312" width="504" height="128" rx="24" fill="#fffdf4" stroke="#111" stroke-width="4" />
+      <text x="800" y="1366" text-anchor="middle" font-size="22" font-weight="900" fill="#171717" font-family="system-ui, sans-serif">${escapeXml(truncateBoardText(output.centerKicker ?? output.themeSummary, 48))}</text>
+      <text x="800" y="1406" text-anchor="middle" font-size="15" fill="#4b4036" font-family="system-ui, sans-serif">Roll, answer, score, and race to the final question.</text>
     </svg>
   `.trim();
 }

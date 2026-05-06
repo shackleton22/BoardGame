@@ -2,13 +2,6 @@
 
 import { ProductTier } from "@prisma/client";
 
-import {
-  COLOR_MOOD_OPTIONS,
-  OCCASION_OPTIONS,
-  RELATIONSHIP_OPTIONS,
-  TONE_OPTIONS,
-  VISUAL_STYLE_OPTIONS,
-} from "@/lib/constants";
 import { formatPrice } from "@/lib/utils";
 
 export type ShippingState = {
@@ -23,202 +16,228 @@ export type ShippingState = {
   phoneNumber: string;
 };
 
+export const BUILDER_INPUT_CLASS =
+  "w-full rounded-2xl border border-[var(--line)] bg-[rgba(255,255,255,0.96)] px-4 py-3.5 text-[15px] text-stone-900 outline-none transition focus:border-[rgba(25,46,58,0.26)] focus:bg-white focus:shadow-[0_0_0_4px_rgba(25,46,58,0.06)]";
+export const BUILDER_SELECT_CLASS = `${BUILDER_INPUT_CLASS} pr-10`;
+export const BUILDER_TEXTAREA_CLASS = `${BUILDER_INPUT_CLASS} min-h-40`;
+export const SOFT_PANEL_CLASS =
+  "rounded-[1.5rem] border border-[var(--line)] bg-[rgba(255,255,255,0.9)] p-5 shadow-[0_14px_34px_rgba(22,22,22,0.035)]";
+
+function humanizeLabel(value: string) {
+  return value
+    .replace(/_/g, " ")
+    .replace(/\b\w/g, (character) => character.toUpperCase());
+}
+
+export function splitTextareaLines(value: string) {
+  return value
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean);
+}
+
+export function splitLineValue(line: string) {
+  const match = line.match(/^(.*?)(?:\s[-:]\s(.+))?$/);
+
+  return {
+    name: match?.[1]?.trim() ?? line.trim(),
+    note: match?.[2]?.trim() || undefined,
+  };
+}
+
 export function StepTabs({
   steps,
   step,
-  onSelect,
 }: {
   steps: readonly string[];
   step: number;
-  onSelect: (step: number) => void;
 }) {
+  const total = steps.length;
+  const current = steps[step] ?? steps[0] ?? "Build";
+  const progressWidth = `${Math.max(12, ((step + 1) / total) * 100)}%`;
+
   return (
-    <div className="glass-panel rounded-[2rem] p-6 sm:p-8">
-      <div className="flex flex-wrap gap-3">
-        {steps.map((label, index) => (
-          <button
-            key={label}
-            type="button"
-            onClick={() => onSelect(index)}
-            className={`rounded-full px-4 py-2 text-sm font-semibold transition ${
-              index === step
-                ? "bg-[var(--brand-strong)] text-white"
-                : "bg-white text-stone-600"
-            }`}
-          >
-            {index + 1}. {label}
-          </button>
-        ))}
+    <div className="rounded-[1.7rem] border border-[var(--line)] bg-[rgba(255,255,255,0.84)] px-5 py-4 shadow-[0_14px_34px_rgba(22,22,22,0.035)] sm:px-6">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <div className="text-[0.72rem] font-semibold uppercase tracking-[0.2em] text-stone-500">
+            Build your gift
+          </div>
+          <div className="mt-2 text-lg font-semibold text-stone-950">{current}</div>
+        </div>
+        <div className="text-sm font-semibold text-stone-500">
+          Step {step + 1} of {total}
+        </div>
+      </div>
+
+      <div className="mt-5 h-1.5 overflow-hidden rounded-full bg-[rgba(20,20,20,0.08)]">
+        <div
+          className="h-full rounded-full bg-[var(--brand-strong)] transition-[width] duration-300"
+          style={{ width: progressWidth }}
+        />
       </div>
     </div>
   );
 }
 
-export function RecipientOccasionFields(props: {
-  recipientName: string;
-  buyerName: string;
-  occasion: (typeof OCCASION_OPTIONS)[number];
-  tone: (typeof TONE_OPTIONS)[number];
-  relationship: (typeof RELATIONSHIP_OPTIONS)[number];
-  onRecipientNameChange: (value: string) => void;
-  onBuyerNameChange: (value: string) => void;
-  onOccasionChange: (value: (typeof OCCASION_OPTIONS)[number]) => void;
-  onToneChange: (value: (typeof TONE_OPTIONS)[number]) => void;
-  onRelationshipChange: (value: (typeof RELATIONSHIP_OPTIONS)[number]) => void;
+export function QuestionCard({
+  eyebrow,
+  title,
+  description,
+  children,
+}: {
+  eyebrow?: string;
+  title: string;
+  description?: string;
+  children: React.ReactNode;
 }) {
   return (
-    <div className="grid gap-6 md:grid-cols-2">
-      <label className="space-y-2">
-        <span className="text-sm font-semibold text-stone-700">Recipient name</span>
-        <input
-          value={props.recipientName}
-          onChange={(event) => props.onRecipientNameChange(event.target.value)}
-          className="w-full rounded-2xl border border-[var(--line)] bg-white px-4 py-3 outline-none"
-          placeholder="Taylor"
-        />
-      </label>
-      <label className="space-y-2">
-        <span className="text-sm font-semibold text-stone-700">Buyer name</span>
-        <input
-          value={props.buyerName}
-          onChange={(event) => props.onBuyerNameChange(event.target.value)}
-          className="w-full rounded-2xl border border-[var(--line)] bg-white px-4 py-3 outline-none"
-          placeholder="Jamie"
-        />
-      </label>
-      <label className="space-y-2">
-        <span className="text-sm font-semibold text-stone-700">Occasion</span>
-        <select
-          value={props.occasion}
-          onChange={(event) =>
-            props.onOccasionChange(event.target.value as (typeof OCCASION_OPTIONS)[number])
-          }
-          className="w-full rounded-2xl border border-[var(--line)] bg-white px-4 py-3 outline-none"
-        >
-          {OCCASION_OPTIONS.map((option) => (
-            <option key={option} value={option}>
-              {option}
-            </option>
-          ))}
-        </select>
-      </label>
-      <label className="space-y-2">
-        <span className="text-sm font-semibold text-stone-700">Tone</span>
-        <select
-          value={props.tone}
-          onChange={(event) =>
-            props.onToneChange(event.target.value as (typeof TONE_OPTIONS)[number])
-          }
-          className="w-full rounded-2xl border border-[var(--line)] bg-white px-4 py-3 outline-none"
-        >
-          {TONE_OPTIONS.map((option) => (
-            <option key={option} value={option}>
-              {option}
-            </option>
-          ))}
-        </select>
-      </label>
-      <label className="space-y-2 md:col-span-2">
-        <span className="text-sm font-semibold text-stone-700">Relationship</span>
-        <div className="grid gap-3 sm:grid-cols-3">
-          {RELATIONSHIP_OPTIONS.map((option) => (
-            <button
-              key={option}
-              type="button"
-              onClick={() => props.onRelationshipChange(option)}
-              className={`rounded-2xl border px-4 py-3 text-left transition ${
-                props.relationship === option
-                  ? "border-[var(--brand-strong)] bg-[rgba(38,70,83,0.08)]"
-                  : "border-[var(--line)] bg-white"
-              }`}
-            >
-              <span className="font-semibold capitalize">{option}</span>
-            </button>
-          ))}
-        </div>
-      </label>
+    <section className="rounded-[2rem] border border-[var(--line)] bg-[rgba(255,253,249,0.96)] p-6 shadow-[0_24px_60px_rgba(22,22,22,0.045)] sm:p-8">
+      <div className="max-w-2xl">
+        {eyebrow ? (
+          <div className="text-[0.72rem] font-semibold uppercase tracking-[0.2em] text-stone-500">
+            {eyebrow}
+          </div>
+        ) : null}
+        <h2 className="heading-display mt-3 text-4xl leading-tight font-semibold text-stone-950 sm:text-[3.25rem]">
+          {title}
+        </h2>
+        {description ? (
+          <p className="mt-3 max-w-xl text-[15px] leading-7 text-stone-600">{description}</p>
+        ) : null}
+      </div>
+      <div className="mt-8 space-y-5">{children}</div>
+    </section>
+  );
+}
+
+export function ChoiceGrid<T extends string>({
+  value,
+  options,
+  onSelect,
+  columnsClass = "sm:grid-cols-2 lg:grid-cols-3",
+}: {
+  value: T;
+  options: readonly T[];
+  onSelect: (value: T) => void;
+  columnsClass?: string;
+}) {
+  return (
+    <div className={`grid gap-3 ${columnsClass}`}>
+      {options.map((option) => {
+        const isActive = option === value;
+
+        return (
+          <button
+            key={option}
+            type="button"
+            onClick={() => onSelect(option)}
+            className={`rounded-[1.45rem] border px-4 py-4 text-left transition ${
+              isActive
+                ? "border-[rgba(25,46,58,0.34)] bg-[rgba(25,46,58,0.08)] text-stone-950 shadow-[0_16px_32px_rgba(25,46,58,0.07)]"
+                : "border-[var(--line)] bg-[rgba(255,255,255,0.86)] text-stone-700 hover:border-[rgba(25,46,58,0.16)] hover:bg-white"
+            }`}
+          >
+            <div className="text-sm font-semibold">{humanizeLabel(option)}</div>
+          </button>
+        );
+      })}
     </div>
   );
 }
 
-export function StyleFields(props: {
-  visualStyle: (typeof VISUAL_STYLE_OPTIONS)[number];
-  colorMood: (typeof COLOR_MOOD_OPTIONS)[number];
-  titleOverride: string;
-  subtitleOverride: string;
-  avoidNotes: string;
-  onVisualStyleChange: (value: (typeof VISUAL_STYLE_OPTIONS)[number]) => void;
-  onColorMoodChange: (value: (typeof COLOR_MOOD_OPTIONS)[number]) => void;
-  onTitleOverrideChange: (value: string) => void;
-  onSubtitleOverrideChange: (value: string) => void;
-  onAvoidNotesChange: (value: string) => void;
+export function MultiChoiceGrid({
+  options,
+  selected,
+  onToggle,
+  columnsClass = "sm:grid-cols-2 lg:grid-cols-3",
+}: {
+  options: readonly { id: string; label: string; hint?: string }[];
+  selected: readonly string[];
+  onToggle: (id: string) => void;
+  columnsClass?: string;
 }) {
   return (
-    <div className="grid gap-6 md:grid-cols-2">
-      <label className="space-y-2">
-        <span className="text-sm font-semibold text-stone-700">Visual style</span>
-        <select
-          value={props.visualStyle}
-          onChange={(event) =>
-            props.onVisualStyleChange(
-              event.target.value as (typeof VISUAL_STYLE_OPTIONS)[number],
-            )
-          }
-          className="w-full rounded-2xl border border-[var(--line)] bg-white px-4 py-3 outline-none"
-        >
-          {VISUAL_STYLE_OPTIONS.map((option) => (
-            <option key={option} value={option}>
-              {option}
-            </option>
-          ))}
-        </select>
-      </label>
-      <label className="space-y-2">
-        <span className="text-sm font-semibold text-stone-700">Color mood</span>
-        <select
-          value={props.colorMood}
-          onChange={(event) =>
-            props.onColorMoodChange(event.target.value as (typeof COLOR_MOOD_OPTIONS)[number])
-          }
-          className="w-full rounded-2xl border border-[var(--line)] bg-white px-4 py-3 outline-none"
-        >
-          {COLOR_MOOD_OPTIONS.map((option) => (
-            <option key={option} value={option}>
-              {option}
-            </option>
-          ))}
-        </select>
-      </label>
-      <label className="space-y-2 md:col-span-2">
-        <span className="text-sm font-semibold text-stone-700">Optional title override</span>
-        <input
-          value={props.titleOverride}
-          onChange={(event) => props.onTitleOverrideChange(event.target.value)}
-          className="w-full rounded-2xl border border-[var(--line)] bg-white px-4 py-3 outline-none"
-          placeholder="A custom title if you already have one"
-        />
-      </label>
-      <label className="space-y-2 md:col-span-2">
-        <span className="text-sm font-semibold text-stone-700">
-          Optional subtitle override
-        </span>
-        <input
-          value={props.subtitleOverride}
-          onChange={(event) => props.onSubtitleOverrideChange(event.target.value)}
-          className="w-full rounded-2xl border border-[var(--line)] bg-white px-4 py-3 outline-none"
-          placeholder="A short secondary line for the board center"
-        />
-      </label>
-      <label className="space-y-2 md:col-span-2">
-        <span className="text-sm font-semibold text-stone-700">Things to avoid</span>
-        <textarea
-          value={props.avoidNotes}
-          onChange={(event) => props.onAvoidNotesChange(event.target.value)}
-          className="min-h-28 w-full rounded-2xl border border-[var(--line)] bg-white px-4 py-3 outline-none"
-          placeholder="Too sentimental, too formal, too much travel focus..."
-        />
-      </label>
+    <div className={`grid gap-3 ${columnsClass}`}>
+      {options.map((option) => {
+        const isActive = selected.includes(option.id);
+
+        return (
+          <button
+            key={option.id}
+            type="button"
+            onClick={() => onToggle(option.id)}
+            className={`rounded-[1.5rem] border px-4 py-4 text-left transition ${
+              isActive
+                ? "border-[rgba(25,46,58,0.34)] bg-[rgba(25,46,58,0.08)] text-stone-950 shadow-[0_16px_32px_rgba(25,46,58,0.07)]"
+                : "border-[var(--line)] bg-[rgba(255,255,255,0.88)] text-stone-700 hover:border-[rgba(25,46,58,0.16)] hover:bg-white"
+            }`}
+          >
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <div className="text-sm font-semibold">{option.label}</div>
+                {option.hint ? (
+                  <div className="mt-1 text-sm leading-6 text-stone-500">{option.hint}</div>
+                ) : null}
+              </div>
+              <div
+                className={`mt-0.5 flex min-w-16 items-center justify-center rounded-full border px-2 py-1 text-[0.65rem] font-bold uppercase tracking-[0.08em] ${
+                  isActive
+                    ? "border-[rgba(25,46,58,0.3)] bg-[var(--brand-strong)] text-white"
+                    : "border-[var(--line)] bg-white text-stone-400"
+                }`}
+              >
+                {isActive ? "Selected" : "Add"}
+              </div>
+            </div>
+          </button>
+        );
+      })}
     </div>
+  );
+}
+
+export function FieldLabel({
+  title,
+  hint,
+}: {
+  title: string;
+  hint?: string;
+}) {
+  return (
+    <div className="space-y-1.5">
+      <div className="text-sm font-semibold text-stone-900">{title}</div>
+      {hint ? <p className="text-sm leading-6 text-stone-600">{hint}</p> : null}
+    </div>
+  );
+}
+
+export function LineTextarea({
+  title,
+  hint,
+  value,
+  onChange,
+  placeholder,
+  footer,
+}: {
+  title: string;
+  hint?: string;
+  value: string;
+  onChange: (value: string) => void;
+  placeholder: string;
+  footer?: string;
+}) {
+  return (
+    <label className={SOFT_PANEL_CLASS}>
+      <FieldLabel title={title} hint={hint} />
+      <textarea
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        className={`${BUILDER_TEXTAREA_CLASS} mt-4 font-[inherit]`}
+        placeholder={placeholder}
+      />
+      {footer ? <div className="mt-3 text-sm text-stone-500">{footer}</div> : null}
+    </label>
   );
 }
 
@@ -235,29 +254,55 @@ export function ProductTierCards(props: {
   };
   selectedTier: ProductTier;
   onSelect: (tier: ProductTier) => void;
+  physicalCheckoutEnabled?: boolean;
+  physicalDisabledMessage?: string;
 }) {
   return (
     <div className="grid gap-4 lg:grid-cols-3">
-      {props.template.tiers.map((tier) => (
-        <button
-          key={tier.tier}
-          type="button"
-          onClick={() => tier.enabled && props.onSelect(tier.tier)}
-          className={`rounded-[1.8rem] border p-5 text-left transition ${
-            props.selectedTier === tier.tier
-              ? "border-[var(--brand-strong)] bg-[rgba(38,70,83,0.08)]"
-              : "border-[var(--line)] bg-white"
-          } ${tier.enabled ? "" : "cursor-not-allowed opacity-60"}`}
-        >
-          <div className="flex items-center justify-between gap-4">
-            <div className="heading-display text-2xl font-semibold">{tier.label}</div>
-            <span className="rounded-full bg-stone-100 px-3 py-1 text-xs font-semibold uppercase tracking-[0.12em] text-stone-600">
-              {tier.enabled ? formatPrice(tier.amount) : tier.badge ?? "Coming soon"}
-            </span>
-          </div>
-          <p className="mt-3 text-sm leading-6 text-stone-600">{tier.description}</p>
-        </button>
-      ))}
+      {props.template.tiers.map((tier) => {
+        const isSelected = props.selectedTier === tier.tier;
+        const disabledByLaunch =
+          tier.tier === ProductTier.printed_board_cards &&
+          props.physicalCheckoutEnabled === false;
+        const isEnabled = tier.enabled && !disabledByLaunch;
+        const badgeLabel = disabledByLaunch
+          ? "Paused"
+          : tier.enabled
+            ? isSelected
+              ? "Selected"
+              : "Available"
+            : tier.badge ?? "Soon";
+
+        return (
+          <button
+            key={tier.tier}
+            type="button"
+            onClick={() => isEnabled && props.onSelect(tier.tier)}
+            className={`rounded-[1.75rem] border px-5 py-5 text-left transition ${
+              isSelected
+                ? "border-[rgba(25,46,58,0.22)] bg-[rgba(25,46,58,0.06)] shadow-[0_16px_36px_rgba(25,46,58,0.06)]"
+                : "border-[var(--line)] bg-[rgba(255,255,255,0.88)]"
+            } ${isEnabled ? "" : "cursor-not-allowed opacity-55"}`}
+          >
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <div className="text-[0.72rem] font-semibold uppercase tracking-[0.18em] text-stone-500">
+                  {badgeLabel}
+                </div>
+                <div className="mt-3 text-xl font-semibold text-stone-950">{tier.label}</div>
+              </div>
+              <div className="text-right text-sm font-semibold text-stone-900">
+                {isEnabled ? formatPrice(tier.amount) : badgeLabel}
+              </div>
+            </div>
+            <p className="mt-4 text-sm leading-7 text-stone-600">
+              {disabledByLaunch
+                ? props.physicalDisabledMessage ?? tier.description
+                : tier.description}
+            </p>
+          </button>
+        );
+      })}
     </div>
   );
 }
@@ -270,14 +315,17 @@ export function EmailField({
   onChange: (value: string) => void;
 }) {
   return (
-    <label className="space-y-2">
-      <span className="text-sm font-semibold text-stone-700">Customer email</span>
+    <label className={SOFT_PANEL_CLASS}>
+      <FieldLabel
+        title="Email"
+        hint="Optional for the proof. Required at checkout for receipts and delivery updates."
+      />
       <input
         type="email"
         value={value}
         onChange={(event) => onChange(event.target.value)}
-        className="w-full rounded-2xl border border-[var(--line)] bg-white px-4 py-3 outline-none"
-        placeholder="for receipts and delivery"
+        className={`${BUILDER_INPUT_CLASS} mt-4`}
+        placeholder="you@example.com"
       />
     </label>
   );
@@ -295,28 +343,28 @@ export function ShippingFields({
 
   return (
     <div className="grid gap-4 md:grid-cols-2">
-      <label className="space-y-2 md:col-span-2">
-        <span className="text-sm font-semibold text-stone-700">Shipping name</span>
+      <label className={`${SOFT_PANEL_CLASS} md:col-span-2`}>
+        <FieldLabel title="Shipping name" />
         <input
           value={shipping.fullName}
           onChange={(event) => updateField("fullName", event.target.value)}
-          className="w-full rounded-2xl border border-[var(--line)] bg-white px-4 py-3 outline-none"
+          className={`${BUILDER_INPUT_CLASS} mt-4`}
         />
       </label>
-      <label className="space-y-2">
-        <span className="text-sm font-semibold text-stone-700">Company</span>
+      <label className={SOFT_PANEL_CLASS}>
+        <FieldLabel title="Company" hint="Optional" />
         <input
           value={shipping.company}
           onChange={(event) => updateField("company", event.target.value)}
-          className="w-full rounded-2xl border border-[var(--line)] bg-white px-4 py-3 outline-none"
+          className={`${BUILDER_INPUT_CLASS} mt-4`}
         />
       </label>
-      <label className="space-y-2">
-        <span className="text-sm font-semibold text-stone-700">Phone number</span>
+      <label className={SOFT_PANEL_CLASS}>
+        <FieldLabel title="Phone number" hint="Helpful for delivery issues" />
         <input
           value={shipping.phoneNumber}
           onChange={(event) => updateField("phoneNumber", event.target.value)}
-          className="w-full rounded-2xl border border-[var(--line)] bg-white px-4 py-3 outline-none"
+          className={`${BUILDER_INPUT_CLASS} mt-4`}
         />
       </label>
       {(
@@ -326,18 +374,26 @@ export function ShippingFields({
           ["city", "City"],
           ["state", "State"],
           ["postalCode", "Postal code"],
-          ["country", "Country"],
         ] as const
       ).map(([field, label]) => (
-        <label key={field} className="space-y-2">
-          <span className="text-sm font-semibold text-stone-700">{label}</span>
+        <label key={field} className={SOFT_PANEL_CLASS}>
+          <FieldLabel title={label} />
           <input
             value={shipping[field]}
             onChange={(event) => updateField(field, event.target.value)}
-            className="w-full rounded-2xl border border-[var(--line)] bg-white px-4 py-3 outline-none"
+            maxLength={field === "state" ? 2 : undefined}
+            className={`${BUILDER_INPUT_CLASS} mt-4`}
           />
         </label>
       ))}
+      <label className={SOFT_PANEL_CLASS}>
+        <FieldLabel title="Country" hint="US only at launch" />
+        <input
+          value="United States"
+          readOnly
+          className={`${BUILDER_INPUT_CLASS} mt-4 cursor-not-allowed bg-stone-50 text-stone-600`}
+        />
+      </label>
     </div>
   );
 }
@@ -347,29 +403,33 @@ export function WizardFooter({
   totalSteps,
   onPrevious,
   onNext,
+  disableNext = false,
+  nextLabel = "Continue",
 }: {
   step: number;
   totalSteps: number;
   onPrevious: () => void;
   onNext: () => void;
+  disableNext?: boolean;
+  nextLabel?: string;
 }) {
   return (
-    <div className="flex items-center justify-between">
+    <div className="flex items-center justify-between gap-4">
       <button
         type="button"
         onClick={onPrevious}
         disabled={step === 0}
-        className="rounded-full border border-[var(--line)] px-5 py-3 text-sm font-semibold text-stone-700 disabled:opacity-50"
+        className="secondary-pill disabled:cursor-not-allowed disabled:opacity-45"
       >
         Back
       </button>
       <button
         type="button"
         onClick={onNext}
-        disabled={step === totalSteps - 1}
-        className="rounded-full bg-[var(--brand-strong)] px-5 py-3 text-sm font-semibold text-white disabled:opacity-50"
+        disabled={step >= totalSteps - 1 || disableNext}
+        className="cta-pill disabled:cursor-not-allowed disabled:opacity-45"
       >
-        Next
+        {nextLabel}
       </button>
     </div>
   );

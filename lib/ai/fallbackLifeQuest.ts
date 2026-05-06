@@ -16,11 +16,15 @@ const TILE_TYPES: LifeQuestAIOutput["tiles"][number]["type"][] = [
   "wildcard",
 ];
 
+function sentenceFragment(value: string) {
+  return value.trim().replace(/[.!?]+$/g, "").toLowerCase();
+}
+
 export function buildFallbackLifeQuest(input: LifeQuestWizardInput): LifeQuestAIOutput {
-  const baseTitle = input.titleOverride || `${input.recipientName}'s Life Quest`;
+  const baseTitle = input.titleOverride || `${input.recipientName}'s Milestone Trail`;
   const subtitle =
     input.subtitleOverride ||
-    "A keepsake journey through favorite places, milestones, and inside jokes.";
+    "A keepsake journey through favorite places, milestones, and stories worth replaying.";
 
   const sourceItems = [...input.items];
   const paddedItems = Array.from({ length: 32 }, (_, index) => {
@@ -36,7 +40,8 @@ export function buildFallbackLifeQuest(input: LifeQuestWizardInput): LifeQuestAI
         `${item.name} Encore ${Math.floor(index / sourceItems.length) + 1}`,
         40,
       ),
-      note:
+      whyItMatters:
+        item.whyItMatters ||
         item.note ||
         `A little callback to ${input.recipientName}'s ${input.tone} story.`,
     };
@@ -46,7 +51,8 @@ export function buildFallbackLifeQuest(input: LifeQuestWizardInput): LifeQuestAI
     name: sanitizePlainText(item.name, 28),
     type: TILE_TYPES[index % TILE_TYPES.length],
     caption: sanitizePlainText(
-      item.note ||
+      item.whyItMatters ||
+        item.note ||
         `Celebrate ${item.name.toLowerCase()} as one more chapter in the adventure.`,
       90,
     ),
@@ -61,8 +67,12 @@ export function buildFallbackLifeQuest(input: LifeQuestWizardInput): LifeQuestAI
     const titlePrefix = kind === "memory" ? "Remember" : "Quest";
     const body =
       kind === "memory"
-        ? `Share the story behind ${item.name.toLowerCase()} and why it still gets brought up.`
-        : `Bring ${item.name.toLowerCase()} energy to the table with a quick challenge or sweet shout-out.`;
+        ? `Share the story behind ${item.name.toLowerCase()} and why ${
+            item.whyItMatters ? sentenceFragment(item.whyItMatters) : "it still gets brought up"
+          }.`
+        : `Bring ${item.name.toLowerCase()} energy to the table with a quick challenge inspired by ${
+            item.whyItMatters ? sentenceFragment(item.whyItMatters) : "this chapter of the story"
+          }.`;
     const effect =
       kind === "memory"
         ? `Gain ${1 + (index % 3)} keepsake point${index % 3 === 0 ? "" : "s"}.`
@@ -87,14 +97,14 @@ export function buildFallbackLifeQuest(input: LifeQuestWizardInput): LifeQuestAI
     boardSections: [
       {
         label: "Origins",
-        description: "Favorite beginnings, routines, and stories everyone loves to retell.",
+        description: "Favorite beginnings, routines, and stories that shaped the early chapters.",
       },
       {
         label: "Highlights",
         description: "Trips, wins, and milestones that deserve their own spotlight.",
       },
       {
-        label: "Inside Jokes",
+        label: "Shared Lore",
         description: "Chaotic, tender, and unforgettable moments only this group understands.",
       },
       {
@@ -133,11 +143,11 @@ export function normalizeLifeQuestOutput(output: LifeQuestAIOutput): ProjectOutp
     title: output.title,
     subtitle: output.subtitle,
     themeSummary: output.themeSummary,
-    centerKicker: "Made for a milestone worth replaying",
+    centerKicker: "A life worth replaying",
     boardSections: output.boardSections,
     tiles: output.tiles,
-    deckPrimaryLabel: "Memory Cards",
-    deckSecondaryLabel: "Quest Cards",
+    deckPrimaryLabel: "Moment Cards",
+    deckSecondaryLabel: "Milestone Cards",
     deckPrimary: output.memoryCards,
     deckSecondary: output.questCards,
     rules: output.rules,

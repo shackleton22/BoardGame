@@ -32,7 +32,7 @@ export async function generateMysteryNightContent(
       source: "ai",
     };
   } catch (error) {
-    await captureServerError(error, { template: "mystery-night", stage: "generate" });
+    await captureServerError(error, { template: "case-file", stage: "generate" });
     return { output: buildFallbackMysteryNight(input), source: "fallback" };
   }
 }

@@ -21,6 +21,10 @@ let clientPromise: Promise<ReplitClient | null> | null = null;
 
 async function getReplitClient() {
   if (!hasReplitStorageConfig()) {
+    if (process.env.NODE_ENV === "production") {
+      throw new Error("REPLIT_APP_STORAGE_BUCKET_ID is required in production.");
+    }
+
     return null;
   }
 
@@ -32,6 +36,10 @@ async function getReplitClient() {
       await client.init(getOptionalEnv("REPLIT_APP_STORAGE_BUCKET_ID"));
       return client;
     } catch (error) {
+      if (process.env.NODE_ENV === "production") {
+        throw error;
+      }
+
       console.error("Unable to initialize Replit App Storage client. Falling back to local storage.", error);
       return null;
     }
@@ -48,6 +56,27 @@ export type StoredFile = {
 
 export function buildStorageKey(projectId: string, fileName: string) {
   return `${STORAGE_ROOT}/${projectId}/${fileName}`;
+}
+
+export function buildSafeGeneratedStorageKeyFromSegments(segments: string[]) {
+  const decodedSegments = segments.map((segment) => decodeURIComponent(segment));
+  const storageKey = decodedSegments.join("/");
+
+  if (
+    !storageKey.startsWith(`${STORAGE_ROOT}/`) ||
+    decodedSegments.some(
+      (segment) =>
+        !segment ||
+        segment === "." ||
+        segment === ".." ||
+        segment.includes("/") ||
+        segment.includes("\\"),
+    )
+  ) {
+    return null;
+  }
+
+  return storageKey;
 }
 
 export function buildStoragePublicUrl(storageKey: string) {

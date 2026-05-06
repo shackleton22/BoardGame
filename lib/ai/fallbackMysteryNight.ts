@@ -22,15 +22,24 @@ export function buildFallbackMysteryNight(
   const sources = [
     ...input.locations.map((location: MysteryNightWizardInput["locations"][number]) => ({
       name: location.name,
-      note: location.note ?? "A favorite place that deserves a dramatic reveal.",
+      note:
+        location.whyItMatters ||
+        location.note ||
+        "A favorite place that deserves a dramatic reveal.",
     })),
     ...input.clues.map((clue: MysteryNightWizardInput["clues"][number]) => ({
       name: clue.name,
-      note: clue.note ?? "A suspicious detail with personal history baked in.",
+      note:
+        clue.story ||
+        clue.note ||
+        "A suspicious detail with personal history baked in.",
     })),
     ...input.suspects.map((suspect: MysteryNightWizardInput["suspects"][number]) => ({
       name: suspect.name,
-      note: suspect.role ?? "A memorable suspect with a suspiciously charming alibi.",
+      note:
+        [suspect.role, suspect.trait, suspect.suspicionLevel]
+          .filter(Boolean)
+          .join(" | ") || "A memorable suspect with a suspiciously charming alibi.",
     })),
   ];
 
@@ -48,12 +57,12 @@ export function buildFallbackMysteryNight(
 
   return {
     title: sanitizePlainText(
-      input.titleOverride || `${input.recipientName}'s Mystery Night`,
+      input.titleOverride || `${input.recipientName}'s Case File`,
       80,
     ),
     subtitle: sanitizePlainText(
       input.subtitleOverride ||
-        "A personalized case file full of favorite suspects, scenes, and suspiciously familiar clues.",
+        "A personalized case file full of favorite suspects, scenes, and suspiciously familiar evidence.",
       140,
     ),
     themeSummary: sanitizePlainText(
@@ -71,7 +80,7 @@ export function buildFallbackMysteryNight(
       },
       {
         label: "Follow the Trail",
-        description: "Gather clues, compare stories, and uncover a few dramatic twists.",
+        description: "Gather evidence, compare stories, and uncover a few dramatic twists.",
       },
       {
         label: "Cross-Examine",
@@ -88,18 +97,18 @@ export function buildFallbackMysteryNight(
       caption: sanitizePlainText(item.note, 90),
       points: [2, 1, -1, 0, 3, -2, 2, 4][index % 8],
     })),
-    deckPrimaryLabel: "Clue Cards",
+    deckPrimaryLabel: "Evidence Cards",
     deckSecondaryLabel: "Twist Cards",
     deckPrimary: Array.from({ length: 24 }, (_, index) => {
       const item = padded[index % padded.length];
       return {
-        title: sanitizePlainText(`Clue: ${item.name}`, 40),
+        title: sanitizePlainText(`Evidence: ${item.name}`, 40),
         body: sanitizePlainText(
-          `Read the clue aloud and connect it to ${input.recipientName}'s real-life mystery lore.`,
+          `Read the evidence aloud and connect it to ${input.recipientName}'s real-life mystery lore.`,
           180,
         ),
         effect: sanitizePlainText(
-          index % 4 === 0 ? "Gain 2 clue points." : "Move forward 1 space after sharing a theory.",
+          index % 4 === 0 ? "Gain 2 evidence points." : "Move forward 1 space after sharing a theory.",
           80,
         ),
       };
@@ -109,7 +118,9 @@ export function buildFallbackMysteryNight(
       return {
         title: sanitizePlainText(`Twist: ${suspect.name}`, 40),
         body: sanitizePlainText(
-          `A new angle appears. Give ${suspect.name} a better alibi, a worse alibi, or a dramatic reveal.`,
+          `A new angle appears. Give ${suspect.name} a better alibi, a worse alibi, or a dramatic reveal based on ${
+            suspect.trait?.toLowerCase() || "their suspicious reputation"
+          }.`,
           180,
         ),
         effect: sanitizePlainText(
@@ -120,19 +131,19 @@ export function buildFallbackMysteryNight(
     }),
     rules: {
       objective:
-        "Collect the strongest case by earning clue points, surviving twists, and finishing the final reveal lap.",
+        "Collect the strongest case by earning evidence points, surviving twists, and finishing the final reveal lap.",
       setup: [
-        "Place the board in the center and shuffle Clue Cards and Twist Cards into separate decks.",
+        "Place the board in the center and shuffle Evidence Cards and Twist Cards into separate decks.",
         "Each player chooses a keepsake token, coin, or figurine and starts at the opening case space.",
-        "Track clue points on paper or with coins nearby.",
+        "Track evidence points on paper or with coins nearby.",
       ],
       turn: [
         "Roll one six-sided die and move forward the matching number of spaces.",
-        "Resolve the landed clue, alibi, or twist before ending your turn.",
+        "Resolve the landed evidence, alibi, or twist before ending your turn.",
         "Whenever a card is drawn, read it aloud and let the group embellish the mystery together.",
       ],
       winning:
-        "When all players reach the final reveal, the player with the most clue points is crowned Lead Detective of the night.",
+        "When all players reach the final reveal, the player with the most evidence points is crowned Lead Detective of the night.",
     },
     artPrompt: sanitizePlainText(
       `Premium mystery-board decorative artwork with corkboard and paper texture cues, ${input.visualStyle} styling, ${input.colorMood} palette, cinematic case-file mood, and no text in the image.`,
